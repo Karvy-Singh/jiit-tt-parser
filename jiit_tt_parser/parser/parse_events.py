@@ -167,6 +167,7 @@ def parse_day(
     courses: dict,
     faculties: dict
 ):
+    events = []
     if str(sheet.cell(start, 2).value).startswith("9"):
         start += 1
 
@@ -182,8 +183,10 @@ def parse_day(
                 ep = periods[j - 2]
                 if m := search_merged_cells(merged_cells, c):
                     ep += periods[m - 2]
-                print(Event.from_string(str(v), ep, day, courses, faculties))
+                events.append(Event.from_string(str(v), ep, day, courses, faculties))
             r += 1
+
+    return events
 
 
 def parse_events(sheet: Worksheet, row, col):
@@ -191,9 +194,9 @@ def parse_events(sheet: Worksheet, row, col):
     periods = get_periods(sheet, row, col, time_row)
     merged_cells = sheet.merged_cells.sorted()
     courses = parse_courses(sheet, row, col)
-    # faculties = get_faculty_map("./faculty.xlsx", "./ttsem1.xlsx")
     faculties = load_faculty_map(FACULTY_MAP)
 
+    events = []
 
     days = [
         "monday",
@@ -209,4 +212,6 @@ def parse_events(sheet: Worksheet, row, col):
         if r < 0:
             continue
 
-        parse_day(sheet, row, col, r, periods, day, merged_cells, courses, faculties)
+        events.extend(parse_day(sheet, row, col, r, periods, day, merged_cells, courses, faculties))
+
+    return events
