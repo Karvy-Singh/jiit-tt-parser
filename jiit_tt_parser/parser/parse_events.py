@@ -189,7 +189,7 @@ def parse_day(
     return events
 
 
-def parse_events(sheet: Worksheet, row, col):
+def parse_events(sheet: Worksheet, row: int, col: int) -> List[Event]:
     time_row, col = get_time_row(sheet, row, col)
     periods = get_periods(sheet, row, col, time_row)
     merged_cells = sheet.merged_cells.sorted()

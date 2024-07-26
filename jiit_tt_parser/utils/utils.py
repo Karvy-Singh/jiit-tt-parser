@@ -4,10 +4,10 @@ import openpyxl
 import requests
 
 
-def cvt_xls_to_xlsx(src_file_path, dst_file_path):
+def cvt_xls_to_xlsx(src_file_path, dst_file_path) -> None:
     xls2xlsx.XLS2XLSX(src_file_path).to_xlsx(dst_file_path)
 
-def max_bounds(sheet: Worksheet):
+def max_bounds(sheet: Worksheet) -> tuple[int, int]:
     row, col = sheet.max_row, sheet.max_column
     r, c = 1, 1
     for i in range(1, row+1):
@@ -20,7 +20,7 @@ def max_bounds(sheet: Worksheet):
                     c = j
     return r,c
 
-def print_worksheet(sheet: Worksheet, row, column):
+def print_worksheet(sheet: Worksheet, row: int, column: int):
     print("|", end="")
     for i in range(1, row+1):
         for j in range(1, column+1):
@@ -30,7 +30,7 @@ def print_worksheet(sheet: Worksheet, row, column):
 
     print("|", end="")
 
-def is_empty_row(sheet: Worksheet, row, cols):
+def is_empty_row(sheet: Worksheet, row: int, cols: int):
     for i in range(1, cols+1):
         if sheet.cell(row, i).value is not None:
             return False
@@ -48,7 +48,7 @@ def download(url: str, save_as: str, block_size: int = 1024*10):
     
     return size
 
-def load_worksheet(path: str):
+def load_worksheet(path: str) -> tuple[Worksheet, int, int]:
     wb = openpyxl.load_workbook(path)
     sheet = wb.active
     r, c = max_bounds(sheet)
