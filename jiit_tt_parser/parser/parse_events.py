@@ -12,7 +12,7 @@ from jiit_tt_parser.utils.cache import load_faculty_map, FACULTY_MAP
 
 class Period:
     def __init__(
-        self, start: datetime.time | None = None, end: datetime.time | None = None
+        self, start: datetime.time =  None, end: datetime.time = None
     ) -> None:
         self.start_time = start or datetime.time(0, 0)
         self.end_time = end or datetime.time(23, 59)
@@ -65,7 +65,7 @@ class Event:
         self.batches: List[str]
         self.event_type: Literal["L", "T", "P"]
         self.classroom: str
-        self.event: str | None
+        self.event: str
         self.eventcode: str
         self.period: Period
         self.day: str
@@ -143,7 +143,7 @@ def is_end_of_day(sheet: Worksheet, col, curr, day):
     return is_empty_row(sheet, curr, col)
 
 
-def search_merged_cells(merged_cells: list[CellRange], cell: Cell) -> int | None:
+def search_merged_cells(merged_cells: list[CellRange], cell: Cell) -> int :
     for c in merged_cells:
         if c.min_row != c.max_row:
             continue
