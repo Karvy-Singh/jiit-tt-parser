@@ -4,11 +4,11 @@ import shutil
 import os
 import sys
 
-from openpyxl.worksheet.cell_range import CellRange
+# from openpyxl.worksheet.cell_range import CellRange
 
-from utils import cvt_xls_to_xlsx, max_bounds, print_worksheet
-from parse_courses import parse_courses
-from parse_events import get_faculty_map, parse_events
+from utils.utils import cvt_xls_to_xlsx, max_bounds, print_worksheet
+# from parser.parse_courses import parse_courses
+from parser.parse_events import parse_events
 
 
 

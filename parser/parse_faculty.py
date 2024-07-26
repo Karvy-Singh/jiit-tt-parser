@@ -1,8 +1,8 @@
 import openpyxl
 from openpyxl.worksheet.worksheet import Worksheet
-from cache import get_cache_file
+from utils.cache import get_cache_file
 import json
-from utils import max_bounds
+from utils.utils import max_bounds
 
 
 PATH = "faculty.xlsx"

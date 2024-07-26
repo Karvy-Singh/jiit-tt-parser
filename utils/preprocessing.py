@@ -1,6 +1,6 @@
-from .utils import cvt_xls_to_xlsx, download
-from cache import get_cache_file
-from data import LINKS
+from utils.utils import cvt_xls_to_xlsx, download
+from utils.cache import get_cache_file
+from utils.cache import LINKS
 from parser.parse_faculty import cache_faculty_map, get_faculty_map
 import tempfile
 import os

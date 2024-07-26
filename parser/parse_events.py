@@ -1,13 +1,13 @@
-from openpyxl.cell import Cell, MergedCell
-from openpyxl.worksheet.cell_range import CellRange
-from openpyxl.worksheet.worksheet import Worksheet
-from utils import is_empty_row
 import datetime
 from typing import Literal, List
-from parse_courses import parse_courses
-from parse_faculty import get_faculty_map
-from cache import load_faculty_map
-from data import FACULTY_MAP
+
+from openpyxl.cell import Cell
+from openpyxl.worksheet.cell_range import CellRange
+from openpyxl.worksheet.worksheet import Worksheet
+
+from parser.parse_courses import parse_courses
+from utils.utils import is_empty_row
+from utils.cache import load_faculty_map, FACULTY_MAP
 
 
 class Period:
