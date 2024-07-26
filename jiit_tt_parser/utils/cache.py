@@ -14,7 +14,6 @@ LINKS = {
 
 def get_cache_file(file: str):
     p = os.path.join(CACHE_DIR, file)
-    os.makedirs(CACHE_DIR, exist_ok=True)
     return p
 
 FACULTY_MAP = get_cache_file("faculty.json")
