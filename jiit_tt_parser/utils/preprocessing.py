@@ -1,7 +1,7 @@
-from utils.utils import cvt_xls_to_xlsx, download
-from utils.cache import get_cache_file
-from utils.cache import LINKS
-from parser.parse_faculty import cache_faculty_map, get_faculty_map
+from jiit_tt_parser.utils.utils import cvt_xls_to_xlsx, download
+from jiit_tt_parser.utils.cache import get_cache_file
+from jiit_tt_parser.utils.cache import LINKS
+from jiit_tt_parser.parser.parse_faculty import cache_faculty_map, get_faculty_map
 import tempfile
 import os
 

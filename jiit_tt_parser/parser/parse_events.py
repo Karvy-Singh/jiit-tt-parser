@@ -5,9 +5,9 @@ from openpyxl.cell import Cell
 from openpyxl.worksheet.cell_range import CellRange
 from openpyxl.worksheet.worksheet import Worksheet
 
-from parser.parse_courses import parse_courses
-from utils.utils import is_empty_row
-from utils.cache import load_faculty_map, FACULTY_MAP
+from jiit_tt_parser.parser.parse_courses import parse_courses
+from jiit_tt_parser.utils.utils import is_empty_row
+from jiit_tt_parser.utils.cache import load_faculty_map, FACULTY_MAP
 
 
 class Period:

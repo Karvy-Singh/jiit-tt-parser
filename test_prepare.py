@@ -1,4 +1,4 @@
-from utils.preprocessing import cache_tt_xls, cache_fac
+from jiit_tt_parser.utils.preprocessing import cache_tt_xls, cache_fac
 
 
 if __name__ == "__main__":

@@ -6,9 +6,9 @@ import sys
 
 # from openpyxl.worksheet.cell_range import CellRange
 
-from utils.utils import cvt_xls_to_xlsx, max_bounds, print_worksheet
+from jiit_tt_parser.utils.utils import cvt_xls_to_xlsx, max_bounds, print_worksheet
 # from parser.parse_courses import parse_courses
-from parser.parse_events import parse_events
+from jiit_tt_parser.parser.parse_events import parse_events
 
 
 

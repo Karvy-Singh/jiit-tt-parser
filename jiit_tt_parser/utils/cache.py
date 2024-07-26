@@ -1,6 +1,6 @@
 import os 
 import json
-from utils import PROG
+from jiit_tt_parser.utils import PROG
 
 CACHE_HOME = os.getenv("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
 CACHE_DIR = os.path.join(CACHE_HOME, PROG)
