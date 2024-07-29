@@ -79,6 +79,7 @@ class Event:
             ev_str[: ev_str.find("(")].split(","),
             ev_str[ev_str.find("(") :],
         )
+        ev.batches = [i.strip() for i in ev.batches]
         ev.eventcode, ev_str = ev_str[1 : ev_str.find(")")], ev_str[ev_str.find(")") :]
         ev.event = courses.get(ev.eventcode.strip())
         ev.classroom, ev_str = ev_str[2 : ev_str.find("/")].strip(), ev_str[ev_str.find("/") :]
