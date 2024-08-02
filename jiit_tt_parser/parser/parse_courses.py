@@ -31,19 +31,30 @@ def parse_down(sheet: Worksheet, i, j, r, c, ftype):
             if (v is None or s is None):
                 continue
 
-            v1, v2 = v.split("/")
-            course_map.update({v1.strip(): s, v2.strip(): s})
+            v = v.replace(" ", "")
+            v = v.replace("\n", "")
+            if "/" in v:
+                v1, v2 = v.split("/")
+            else:
+                v1 = v2 = v
+
+            course_map.update({v1.strip(): s, v2.strip(): s, v.strip(): s})
     return course_map
 
 def parse_courses(sheet: Worksheet, row: int, col: int):
     course_map = {}
     for i in range(1, row+1):
         for j in range(1, col+1):
+            pvalue = None
+            if (j-1 > 0):
+                pvalue = str(sheet.cell(i, j-1).value)
             value = str(sheet.cell(i, j).value)
             nvalue = str(sheet.cell(i, j+1).value)
             if value in ["Short Subject Code", "CODE", "SHORT FORM"] and (nvalue in ["Subject Code", "SUBJECT CODE"]):
                 course_map.update(parse_down(sheet, i+1, j, row, col, ftype=1))
             elif value in ["SHORT FORM / SUBJECT CODE"] and nvalue in ["SUBJECT NAME"]:
+                course_map.update(parse_down(sheet, i+1, j, row, col, ftype=2))
+            elif pvalue in ["Name"] and value in ["SUBJECT CODE"] and nvalue in ["SUBJECT NAME"]:
                 course_map.update(parse_down(sheet, i+1, j, row, col, ftype=2))
             
     return course_map

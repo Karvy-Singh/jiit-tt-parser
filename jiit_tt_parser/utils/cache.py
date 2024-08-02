@@ -8,7 +8,9 @@ LINKS = {
   "sem1": "https://www.jiit.ac.in/sites/default/files/B%20Tech%20I%20Sem%20odd%202024_17%20July.xlsx",
   "sem3": "https://www.jiit.ac.in/sites/default/files/B%20Tech%20III%20Sem%2018%20JULY%205%20PM.xls",
   "fac1": "https://www.jiit.ac.in/sites/default/files/Faculty%20Abbreviations_0.xlsx",
-  "fac2": "https://www.jiit.ac.in/sites/default/files/15.%20Faculty%20Abbreviations.xlsx"
+  "fac2": "https://www.jiit.ac.in/sites/default/files/15.%20Faculty%20Abbreviations.xlsx",
+  "bca_sem1": "https://www.jiit.ac.in/sites/default/files/BCA%20I%20Sem%20and%20III%20Sem%202024.xls",
+  "bca_sem3": "https://www.jiit.ac.in/sites/default/files/BCA%20I%20Sem%20and%20III%20Sem%202024.xls"
 }
 
 

@@ -30,10 +30,11 @@ def cache_fac():
     assert os.path.exists(sem1:=get_cache_file("sem1.xlsx"))
     assert os.path.exists(fac1:=get_cache_file("fac1.xlsx"))
     assert os.path.exists(fac2:=get_cache_file("fac2.xlsx"))
+    assert os.path.exists(bca_sem1:=get_cache_file("bca_sem1.xlsx"))
     print("found")
     
     print("Generating faculty maps... ", end="")
-    c = get_faculty_map(fac1, fac2, sem1)
+    c = get_faculty_map(fac1, fac2, sem1, bca_sem1)
     cache_faculty_map(c)
 
     print("done")

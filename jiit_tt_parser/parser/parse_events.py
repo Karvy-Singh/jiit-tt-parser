@@ -63,7 +63,7 @@ class Event:
     def __init__(self, event_string: str):
         self.event_string = event_string
         self.batches: List[str]
-        self.event_type: Literal["L", "T", "P"]
+        self.event_type: Literal["L", "T", "P", "TALK"]
         self.classroom: str
         self.event: str
         self.eventcode: str
@@ -73,7 +73,25 @@ class Event:
 
     @classmethod
     def from_string(cls, ev_str, period: Period, day: str, courses: dict, faculties: dict):
+        ev_str = ev_str.strip()
         ev = cls(ev_str)
+        if "TALK" in ev_str:
+            ev.event_type = "TALK" 
+            ev.batches, ev_str = (
+                ev_str[: ev_str.find("(")].split(","),
+                ev_str[ev_str.find("(") :],
+            )
+            ev.batches = [i.strip() for i in ev.batches]
+            ev.eventcode = "TALK"
+            ev.event = "Talk"
+            ev.classroom = ev_str.split("-")[-1].strip()
+            ev.lecturer = []
+
+            ev.period = period
+            ev.day = day.capitalize()
+            return ev
+
+
         ev.event_type, ev_str = ev_str[:1], ev_str[1:]
         ev.batches, ev_str = (
             ev_str[: ev_str.find("(")].split(","),
@@ -96,7 +114,9 @@ class Event:
         return ev
 
     def __str__(self) -> str:
-        lecture_types = {"L": "Lecture", "T": "Tutorial", "P": "Practical"}
+        # print(repr(self.event_type))
+        # print(self.event_string)
+        lecture_types = {"L": "Lecture", "T": "Tutorial", "P": "Practical", "TALK": "Talk"}
         return f"""Event: {lecture_types[self.event_type]}
 Time: {self.period}
 Day: {self.day}
@@ -114,6 +134,7 @@ def get_time_row(sheet: Worksheet, row, col):
             for j in range(2, col + 1):
                 if sheet.cell(i, j).value is None:
                     return i, j-1
+            return i, col
 
     return 2, col
 

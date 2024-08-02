@@ -73,7 +73,35 @@ def get_faculty_map_from_sem1(path):
 
     return faculty_map
 
-def get_faculty_map(fac1_xl_path: str, fac2_xl_path: str, sem1_xl_path: str):
+
+def parse_down_bca(sheet, r, c):
+    faculty_map = {}
+    while ((v:=sheet.cell(r, c).value) is not None):
+        v2 = sheet.cell(r, c+1).value
+        faculty_map.update({str(v).strip(): str(v2).strip()})
+        r+=1
+
+    return faculty_map
+
+def generate_faculty_map_from_bca1(sheet: Worksheet, row: int, col: int):
+    faculty_map = {}
+    for i in range(1, row+1):
+        for j in range(1, col+1):
+            v = sheet.cell(i, j).value
+
+            if (str(v).strip().startswith("Faculty Abbreviation")):
+                faculty_map.update(parse_down_bca(sheet, i+1, j))
+
+    return faculty_map
+def get_faculty_map_from_bca1(path):
+    wb = openpyxl.load_workbook(path)
+    sheet = wb.active
+    r, c = max_bounds(sheet)
+    faculty_map = generate_faculty_map_from_bca1(sheet, r, c)
+
+    return faculty_map
+
+def get_faculty_map(fac1_xl_path: str, fac2_xl_path: str, sem1_xl_path: str, bca1_xl_path: str):
     wb = openpyxl.load_workbook(fac1_xl_path)
     wb2 = openpyxl.load_workbook(fac2_xl_path)
 
@@ -86,7 +114,7 @@ def get_faculty_map(fac1_xl_path: str, fac2_xl_path: str, sem1_xl_path: str):
     faculty_map = generate_faculty_map(sheet, r, c)
     faculty_map.update(get_faculty_map_from_sem1(sem1_xl_path))
     faculty_map.update(generate_faculty_map(sheet2, r2, c2))
-
+    faculty_map.update(v:=get_faculty_map_from_bca1(bca1_xl_path))
 
     return faculty_map
 

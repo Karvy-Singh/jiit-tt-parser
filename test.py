@@ -29,7 +29,7 @@ if __name__ == "__main__":
     # pprint(parse_courses(sheet, r, c))
     # pprint(get_faculty_map("./faculty.xlsx", "./ttsem1.xlsx"))
 
-    parse_events(sheet, r, c)
+    print(*parse_events(sheet, r, c), sep="\n")
     
     os.remove(PATH)
 
