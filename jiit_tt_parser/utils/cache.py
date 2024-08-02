@@ -13,6 +13,8 @@ LINKS = {
   "bca_sem3": "https://www.jiit.ac.in/sites/default/files/BCA%20I%20Sem%20and%20III%20Sem%202024.xls"
 }
 
+def ensure_cache_folder():
+    os.makedirs(CACHE_DIR, exist_ok=True)
 
 def get_cache_file(file: str):
     p = os.path.join(CACHE_DIR, file)

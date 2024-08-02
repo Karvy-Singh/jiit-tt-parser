@@ -42,7 +42,7 @@ def download(url: str, save_as: str, block_size: int = 1024*10):
     r = requests.get(url, stream=True)
     size = r.headers["Content-Length"]
     
-    with open(save_as, "wb") as f:
+    with open(save_as, "wb+") as f:
         for data in r.iter_content(block_size):
             f.write(data)
     
