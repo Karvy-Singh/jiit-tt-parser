@@ -4,11 +4,13 @@ from jiit_tt_parser.utils.cache import LINKS
 from jiit_tt_parser.parser.parse_faculty import cache_faculty_map, get_faculty_map
 import tempfile
 import os
+import shutil
 
 
 def cache_tt_xls():
     print("Caching Time Table spreadsheets...")
     tmp_dir = tempfile.gettempdir()
+    shutil.copy("bca_sem_1_3_new.xlsx", get_cache_file("bca_sem1_new.xlsx"))   
     for k, v in LINKS.items():
         ext = v.split(".")[-1]
         file_name = f"{k}.{ext}"

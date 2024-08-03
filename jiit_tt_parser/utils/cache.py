@@ -10,7 +10,7 @@ LINKS = {
   "fac1": "https://www.jiit.ac.in/sites/default/files/Faculty%20Abbreviations_0.xlsx",
   "fac2": "https://www.jiit.ac.in/sites/default/files/15.%20Faculty%20Abbreviations.xlsx",
   "bca_sem1": "https://www.jiit.ac.in/sites/default/files/BCA%20I%20Sem%20and%20III%20Sem%202024.xls",
-  "bca_sem3": "https://www.jiit.ac.in/sites/default/files/BCA%20I%20Sem%20and%20III%20Sem%202024.xls"
+  "bca_sem3": "https://www.jiit.ac.in/sites/default/files/BCA%20I%20Sem%20and%20III%20Sem%202024.xls",
 }
 
 def ensure_cache_folder():

@@ -40,7 +40,7 @@ def is_empty_row(sheet: Worksheet, row: int, cols: int):
 
 def download(url: str, save_as: str, block_size: int = 1024*10):
     r = requests.get(url, stream=True)
-    size = r.headers["Content-Length"]
+    size = r.headers.get("Content-Length") or r.headers.get("content-length")
     
     with open(save_as, "wb+") as f:
         for data in r.iter_content(block_size):
