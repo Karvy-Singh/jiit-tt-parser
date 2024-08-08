@@ -1,5 +1,6 @@
 import datetime
 from typing import Literal, List
+import string
 
 from openpyxl.cell import Cell
 from openpyxl.worksheet.cell_range import CellRange
@@ -100,7 +101,11 @@ class Event:
         ev.batches = [i.strip() for i in ev.batches]
         ev.eventcode, ev_str = ev_str[1 : ev_str.find(")")], ev_str[ev_str.find(")") :]
         ev.event = courses.get(ev.eventcode.strip())
-        ev.classroom, ev_str = ev_str[2 : ev_str.find("/")].strip(), ev_str[ev_str.find("/") :]
+        
+        while ev_str[0].upper() not in string.ascii_uppercase:
+            ev_str = ev_str[1:]
+        
+        ev.classroom, ev_str = ev_str[: ev_str.find("/")].strip(), ev_str[ev_str.find("/") :]
 
         lecturer = ev_str[1:]
         lec_splitter = ","
