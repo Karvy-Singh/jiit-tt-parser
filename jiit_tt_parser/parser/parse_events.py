@@ -12,9 +12,7 @@ from jiit_tt_parser.utils.cache import load_faculty_map, FACULTY_MAP
 
 
 class Period:
-    def __init__(
-        self, start: datetime.time =  None, end: datetime.time = None
-    ) -> None:
+    def __init__(self, start: datetime.time = None, end: datetime.time = None) -> None:
         self.start_time = start or datetime.time(0, 0)
         self.end_time = end or datetime.time(23, 59)
 
@@ -73,11 +71,13 @@ class Event:
         self.lecturer: List[str]
 
     @classmethod
-    def from_string(cls, ev_str, period: Period, day: str, courses: dict, faculties: dict):
+    def from_string(
+        cls, ev_str, period: Period, day: str, courses: dict, faculties: dict
+    ):
         ev_str = ev_str.strip()
         ev = cls(ev_str)
         if "TALK" in ev_str:
-            ev.event_type = "TALK" 
+            ev.event_type = "TALK"
             ev.batches, ev_str = (
                 ev_str[: ev_str.find("(")].split(","),
                 ev_str[ev_str.find("(") :],
@@ -92,24 +92,36 @@ class Event:
             ev.day = day.capitalize()
             return ev
 
-
         ev.event_type, ev_str = ev_str[:1], ev_str[1:]
-        ev.batches, ev_str = (
-            ev_str[: ev_str.find("(")].split(","),
-            ev_str[ev_str.find("(") :],
-        )
+
+        raw_batches = ev_str[: ev_str.find("(")]
+        ev_str = ev_str[ev_str.find("(") :]
+
+        ev.batches = raw_batches.split(",")
+        if "." in raw_batches:
+            ev.batches = raw_batches.split(".")
+
         ev.batches = [i.strip() for i in ev.batches]
+
+        if len(ev.batches) > 1:
+            for i, b in enumerate(ev.batches[1:], start=1):
+                if b[0].isdigit():
+                    ev.batches[i] = f"{ev.batches[0][0]}{ev.batches[i]}"
+
         ev.eventcode, ev_str = ev_str[1 : ev_str.find(")")], ev_str[ev_str.find(")") :]
         ev.event = courses.get(ev.eventcode.strip())
-        
+
         while ev_str[0].upper() not in string.ascii_uppercase:
             ev_str = ev_str[1:]
-        
-        ev.classroom, ev_str = ev_str[: ev_str.find("/")].strip(), ev_str[ev_str.find("/") :]
+
+        ev.classroom, ev_str = (
+            ev_str[: ev_str.find("/")].strip(),
+            ev_str[ev_str.find("/") :],
+        )
 
         lecturer = ev_str[1:]
         lec_splitter = ","
-        if '/' in lecturer:
+        if "/" in lecturer:
             lec_splitter = "/"
         ev.lecturer = lecturer.split(lec_splitter)
         ev.lecturer = [faculties.get(i.strip()) or i for i in ev.lecturer]
@@ -121,7 +133,12 @@ class Event:
     def __str__(self) -> str:
         # print(repr(self.event_type))
         # print(self.event_string)
-        lecture_types = {"L": "Lecture", "T": "Tutorial", "P": "Practical", "TALK": "Talk"}
+        lecture_types = {
+            "L": "Lecture",
+            "T": "Tutorial",
+            "P": "Practical",
+            "TALK": "Talk",
+        }
         return f"""Event: {lecture_types[self.event_type]}
 Time: {self.period}
 Day: {self.day}
@@ -138,7 +155,7 @@ def get_time_row(sheet: Worksheet, row, col):
         if str(v).startswith("9"):
             for j in range(2, col + 1):
                 if sheet.cell(i, j).value is None:
-                    return i, j-1
+                    return i, j - 1
             return i, col
 
     return 2, col
@@ -170,7 +187,7 @@ def is_end_of_day(sheet: Worksheet, col, curr, day):
     return is_empty_row(sheet, curr, col)
 
 
-def search_merged_cells(merged_cells: list[CellRange], cell: Cell) -> int :
+def search_merged_cells(merged_cells: list[CellRange], cell: Cell) -> int:
     for c in merged_cells:
         if c.min_row != c.max_row:
             continue
@@ -192,7 +209,7 @@ def parse_day(
     day: str,
     merged_cells: list[CellRange],
     courses: dict,
-    faculties: dict
+    faculties: dict,
 ):
     events = []
     if str(sheet.cell(start, 2).value).startswith("9"):
@@ -204,7 +221,7 @@ def parse_day(
             c = sheet.cell(r, j)
             if (
                 ((v := c.value) is not None)
-                and ("LUNCH" not in str(v))
+                and (str(v) not in ["LUNCH", "ALL BATCH FREE FOR MEETING"])
                 and (not str(v).isspace())
             ):
                 ep = periods[j - 2]
@@ -216,12 +233,14 @@ def parse_day(
     return events
 
 
-def parse_events(sheet: Worksheet, row: int, col: int) -> List[Event]:
+def parse_events(
+    sheet: Worksheet, row: int, col: int, faculty_map_path: str = FACULTY_MAP
+) -> List[Event]:
     time_row, col = get_time_row(sheet, row, col)
     periods = get_periods(sheet, row, col, time_row)
     merged_cells = sheet.merged_cells.sorted()
     courses = parse_courses(sheet, row, col)
-    faculties = load_faculty_map(FACULTY_MAP)
+    faculties = load_faculty_map(faculty_map_path)
 
     events = []
 
@@ -239,6 +258,10 @@ def parse_events(sheet: Worksheet, row: int, col: int) -> List[Event]:
         if r < 0:
             continue
 
-        events.extend(parse_day(sheet, row, col, r, periods, day, merged_cells, courses, faculties))
+        events.extend(
+            parse_day(
+                sheet, row, col, r, periods, day, merged_cells, courses, faculties
+            )
+        )
 
     return events
