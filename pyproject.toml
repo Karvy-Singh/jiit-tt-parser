@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jiit-tt-parser"
-version = "0.2.1"
+version = "0.2.2"
 description = "Parse JIIT Time Table Spreadsheets in Python"
 authors = ["Harsh Sharma <harsh@codelif.in>"]
 license = "GPL3"
