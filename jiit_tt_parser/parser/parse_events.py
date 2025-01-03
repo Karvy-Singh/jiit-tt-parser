@@ -2,6 +2,7 @@ import datetime
 from typing import Literal, List
 import string
 
+from openpyxl.styles import colors
 from openpyxl.cell import Cell
 from openpyxl.worksheet.cell_range import CellRange
 from openpyxl.worksheet.worksheet import Worksheet
@@ -110,7 +111,7 @@ class Event:
 
         ev.eventcode, ev_str = ev_str[1 : ev_str.find(")")], ev_str[ev_str.find(")") :]
         ev.event = courses.get(ev.eventcode.strip())
-
+        
         while ev_str[0].upper() not in string.ascii_uppercase:
             ev_str = ev_str[1:]
 
@@ -176,15 +177,20 @@ def get_periods(sheet: Worksheet, row, col, time_row):
     for i in range(2, col + 1):
         p = Period.from_string(s := str(sheet.cell(time_row, i).value))
         a.append(p)
-
+    
     return a
 
 
-def is_end_of_day(sheet: Worksheet, col, curr, day):
+def is_end_of_day(sheet: Worksheet, curr, day):
     if day != "saturday":
         return sheet.cell(curr + 1, 1).value is not None
 
-    return is_empty_row(sheet, curr, col)
+    # v = sheet.cell(curr, 1).value
+    # print(v)
+    theme = sheet.cell(curr, 1).fill.start_color.theme
+    if theme is not None and theme == 1:
+        return True
+    return False
 
 
 def search_merged_cells(merged_cells: list[CellRange], cell: Cell) -> int:
@@ -217,7 +223,7 @@ def parse_day(
 
     for j in range(2, col + 1):
         r = start
-        while not is_end_of_day(sheet, col, r, day):
+        while not is_end_of_day(sheet, r, day):
             c = sheet.cell(r, j)
             if (
                 ((v := c.value) is not None)

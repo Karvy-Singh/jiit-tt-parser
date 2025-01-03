@@ -24,7 +24,8 @@ if __name__ == "__main__":
     r, c = max_bounds(sheet)
     # print_worksheet(sheet, r, c)
     # p(sheet, r,c )
-
+    for i in range(1, r+1):
+        print(sheet.cell(i, 1).value)
     from pprint import pprint
     # pprint(parse_courses(sheet, r, c))
     # pprint(get_faculty_map("./faculty.xlsx", "./ttsem1.xlsx"))
