@@ -119,6 +119,9 @@ def get_faculty_map(fac1_xl_path: str, fac2_xl_path: str, sem1_xl_path: str, bca
     sheet = wb.active
     sheet2 = wb2.active
 
+    r, c = search_bounds(sheet)
+    r2, c2 = search_bounds(sheet2)
+
     faculty_map = generate_faculty_map(sheet, r, c)
     faculty_map.update(get_faculty_map_from_sem1(sem1_xl_path))
     faculty_map.update(generate_faculty_map(sheet2, r2, c2))
