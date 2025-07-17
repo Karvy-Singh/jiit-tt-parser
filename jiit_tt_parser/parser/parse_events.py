@@ -1,6 +1,8 @@
 import datetime
 from typing import Literal, List
 import string
+import re
+import difflib
 
 from openpyxl.styles import colors
 from openpyxl.cell import Cell
@@ -23,11 +25,11 @@ class Period:
         start = start.strip(" NO")
         end = end.strip("APM ")
 
-        end_hour, end_min = end.split(".")
+        end_hour, end_min = re.split(r'[:.]', end)
         end_hour = int(end_hour)
         end_min = int(end_min)
 
-        start_hour = start
+        start_hour = parse_start_hour(start)
         start_min = "0"
         if "." in start:
             start_hour, start_min = start.split(".")
@@ -94,11 +96,14 @@ class Event:
             return ev
 
         ev.event_type, ev_str = ev_str[:1], ev_str[1:]
+        if ev.event_type not in ["T","P","L","TALK"]:
+            return 
 
         raw_batches = ev_str[: ev_str.find("(")]
         ev_str = ev_str[ev_str.find("(") :]
-
-        ev.batches = raw_batches.split(",")
+        
+        raw_batches= raw_batches.replace(",","")
+        ev.batches = re.findall(r'[A-Za-z]+\d+', raw_batches)
         if "." in raw_batches:
             ev.batches = raw_batches.split(".")
 
@@ -111,14 +116,25 @@ class Event:
 
         ev.eventcode, ev_str = ev_str[1 : ev_str.find(")")], ev_str[ev_str.find(")") :]
         ev.event = courses.get(ev.eventcode.strip())
+
+        if ev.event is None:
+            key = ev.eventcode.strip()
+            matches = difflib.get_close_matches(key, courses.keys(), n=1, cutoff=0.8)
+            if matches:
+                ev.event = courses[matches[0]]
         
-        while ev_str[0].upper() not in string.ascii_uppercase:
+        while ev_str and ev_str[0].upper() not in string.ascii_uppercase + string.digits:
             ev_str = ev_str[1:]
 
         ev.classroom, ev_str = (
             ev_str[: ev_str.find("/")].strip(),
             ev_str[ev_str.find("/") :],
         )
+
+        if ev.classroom.upper() == "EDD" and "/" in ev_str[1:]:
+            first, rest = ev_str[1:].split("/", 1)
+            ev.classroom = first
+            ev_str = "/" + rest
 
         lecturer = ev_str[1:]
         lec_splitter = ","
@@ -140,6 +156,7 @@ class Event:
             "P": "Practical",
             "TALK": "Talk",
         }
+
         return f"""Event: {lecture_types[self.event_type]}
 Time: {self.period}
 Day: {self.day}
@@ -182,7 +199,10 @@ def get_periods(sheet: Worksheet, row, col, time_row):
 
 
 def is_end_of_day(sheet: Worksheet, curr, day):
-    if day != "saturday":
+    if curr >= 300:
+        return True
+
+    if day.lower() != "saturday":
         return sheet.cell(curr + 1, 1).value is not None
 
     # v = sheet.cell(curr, 1).value
@@ -227,12 +247,15 @@ def parse_day(
             c = sheet.cell(r, j)
             if (
                 ((v := c.value) is not None)
-                and (str(v) not in ["LUNCH", "ALL BATCH FREE FOR MEETING"])
-                and (not str(v).isspace())
-            ):
+                and (s := str(v).strip())
+                and (s not in ["LUNCH", "ALL BATCH FREE FOR MEETING"])
+                and any(ch.isalpha() for ch in s)
+                ):
                 ep = periods[j - 2]
                 if m := search_merged_cells(merged_cells, c):
                     ep += periods[m - 2]
+
+                #print(periods)
                 events.append(Event.from_string(str(v), ep, day, courses, faculties))
             r += 1
 
@@ -271,3 +294,15 @@ def parse_events(
         )
 
     return events
+
+def parse_start_hour(start):
+    if isinstance(start, int):
+        return start
+    elif isinstance(start, str):
+        try:
+            parts = start.split(':')
+            return int(parts[0])
+        except:
+            pass
+
+
