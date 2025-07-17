@@ -125,7 +125,7 @@ class Event:
         if "/" in lecturer:
             lec_splitter = "/"
         ev.lecturer = lecturer.split(lec_splitter)
-        ev.lecturer = [faculties.get(i.strip()) or i for i in ev.lecturer]
+        ev.lecturer = [faculties.get(i.strip()) or i.strip() for i in ev.lecturer]
 
         ev.period = period
         ev.day = day.capitalize()
