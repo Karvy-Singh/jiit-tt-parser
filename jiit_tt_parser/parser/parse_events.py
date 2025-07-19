@@ -86,7 +86,7 @@ class Event:
         faculties: dict,
     ):
         ev_str = ev_str.strip().replace("\n", " ").replace("\xa0", " ")
-        print(repr(ev_str))
+        # print(repr(ev_str))
         og = ev_str
 
         if "C1-C3HS" in ev_str:
@@ -138,7 +138,7 @@ class Event:
         while ev_str[0].upper() not in string.ascii_uppercase + string.digits:
             ev_str = ev_str[1:]
 
-        print(repr(ev_str))
+        # print(repr(ev_str))
         if "EDD/CADD0" in ev_str:
             pass
             ev.classroom = ev_str[: ev_str.find("/")]
@@ -179,10 +179,6 @@ class Event:
 
         ev.period = period
         ev.day = day.capitalize()
-        print(ev)
-        # if "EDD/CADD" in og or "C1-C3HS" in og or (og.startswith("PBG") and og[3].isdigit()):
-        #     input()
-            # sys.exit(1)
         return ev
 
     def __str__(self) -> str:
@@ -437,7 +433,7 @@ def parse_day(
                     ev := Event.from_string(
                         str(v), ep, day, courses, electives, faculties
                     )
-                ) is None:
+                ) is not None:
                     events.append(ev)
             r += 1
 
