@@ -94,9 +94,9 @@ class Event:
 
         if "LC1-C3(HS211)-/FF1KMB" in ev_str:
             ev_str = "LC1-C3(HS211)-/FF1/KMB"
-        
+
         if ev_str.startswith("PBG") and ev_str[3].isdigit():
-            ev_str = "PG" + ev_str[3:] 
+            ev_str = "PG" + ev_str[3:]
 
         if ev_str == "":
             return None
@@ -319,8 +319,6 @@ def parse_concatenated(concat_str):
     return [f"{letter}{number}" for letter, number in matches]
 
 
-
-
 def get_time_row(sheet: Worksheet, row, col):
     for i in range(1, row + 1):
         v = sheet.cell(i, 2).value
@@ -493,13 +491,14 @@ def split_hour_min(time_str):
 def contains_number(s):
     return any(char.isdigit() for char in s)
 
+
 def get_teaching_assistant(input_string):
     """
     Check if string matches format 'TA{number}' and extract components.
-    
+
     Args:
         input_string (str): String to check
-        
+
     Returns:
         tuple: (formatted_string, is_valid)
                - formatted_string: "Teaching Assistant {number}" if valid, anything if invalid
@@ -507,29 +506,35 @@ def get_teaching_assistant(input_string):
     """
     if not input_string:
         return "Invalid input", False
-    
+
     # Pattern to match TA followed by digits
-    pattern = r'^TA(\d+)$'
+    pattern = r"^TA(\d+)$"
     match = re.match(pattern, input_string)
-    
+
     if match:
         number = match.group(1)
         return f"Teaching Assistant {number}", True
     else:
         return "Invalid format", False
 
+
 def get_new_faculty(input_string):
     if not input_string:
         return "Invalid input", False
 
-    # Pattern to match NF followed by any characters and ending with digits
-    pattern = r"^NF(.+?)(\d+)$"
+    # Pattern to match NF followed by any characters (including none) and ending with digits
+    pattern = r"^NF(.*?)(\d+)$"
     match = re.match(pattern, input_string)
 
     if match:
         chars = match.group(1)
         number = match.group(2)
-        return f"New Faculty {chars} {number}", True
+
+        # If chars is empty, don't include extra space
+        if chars:
+            return f"New Faculty {chars} {number}", True
+        else:
+            return f"New Faculty {number}", True
     else:
         return "Invalid format", False
 
@@ -682,5 +687,3 @@ def lookup_short_format(code, subject_dict):
         return subject_dict.get(fixed_code)
 
     return subject_dict.get(code)
-
-
