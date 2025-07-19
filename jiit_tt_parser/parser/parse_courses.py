@@ -61,6 +61,18 @@ def parse_down(sheet: Worksheet, i, j, r, c, ftype):
                 continue
             course_map.update({ str(code).strip(): str(name).strip() })
 
+    elif ftype == 5:
+        while i <= r:
+            short = sheet.cell(i, j).value
+            name  = sheet.cell(i, j + 2).value
+            i += 1
+            if not short or not name:
+                continue
+
+            short = str(short).strip()
+            name  = str(name).strip()
+            course_map[short] = name
+
     return course_map
 
 
@@ -94,5 +106,8 @@ def parse_courses(sheet: Worksheet, row: int, col: int):
 
             elif pvalue in ["COURSE"] and value in ["COURSE CODE"]:
                 course_map.update(parse_down(sheet,i + 1,j,row, col,ftype=4))
+            
+            elif value == "Short Name" and nvalue == "Course Code":
+                course_map.update(parse_down(sheet, i + 1, j, row, col, ftype=5))
 
     return course_map
