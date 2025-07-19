@@ -108,6 +108,6 @@ def parse_courses(sheet: Worksheet, row: int, col: int):
                 course_map.update(parse_down(sheet,i + 1,j,row, col,ftype=4))
             
             elif value == "Short Name" and nvalue == "Course Code":
-                course_map.update(parse_down(sheet, i + 1, j, row, col, ftype=5))
+                course_map.update(parse_down(sheet, i + 1, j, row, col, ftype=1))
 
     return course_map

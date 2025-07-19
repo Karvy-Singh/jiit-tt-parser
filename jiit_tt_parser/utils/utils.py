@@ -1,5 +1,6 @@
 import xls2xlsx 
 from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.cell.cell import Cell
 import openpyxl
 import requests
 
@@ -55,3 +56,51 @@ def load_worksheet(path: str) -> tuple[Worksheet, int, int]:
     return sheet, r, c
 
 
+def are_cells_in_same_merged_group(worksheet: Worksheet, cell1: Cell, cell2: Cell):
+    """
+    Check if two openpyxl cell objects are part of the same merged cells group.
+    
+    Args:
+        worksheet: openpyxl worksheet object
+        cell1: openpyxl Cell object
+        cell2: openpyxl Cell object
+    
+    Returns:
+        bool: True if cells are in the same merged group, False otherwise
+    """
+    
+    # Get row and column from cell objects
+    row1, col1 = cell1.row, cell1.column
+    row2, col2 = cell2.row, cell2.column
+    
+    # Check all merged cell ranges in the worksheet
+    for merged_range in worksheet.merged_cells.ranges:
+        # Check if both cells fall within this merged range
+        if (merged_range.min_row <= row1 <= merged_range.max_row and
+            merged_range.min_col <= col1 <= merged_range.max_col and
+            merged_range.min_row <= row2 <= merged_range.max_row and
+            merged_range.min_col <= col2 <= merged_range.max_col):
+            return True
+    
+    return False
+
+# Helper function to find which merged group a cell belongs to (if any)
+def get_merged_range_for_cell(worksheet: Worksheet, cell: Cell):
+    """
+    Find the merged range that contains the given cell object.
+    
+    Args:
+        worksheet: openpyxl worksheet object
+        cell: openpyxl Cell object
+    
+    Returns:
+        MergedCellRange object if cell is in a merged range, None otherwise
+    """
+    row, col = cell.row, cell.column
+    
+    for merged_range in worksheet.merged_cells.ranges:
+        if (merged_range.min_row <= row <= merged_range.max_row and
+            merged_range.min_col <= col <= merged_range.max_col):
+            return merged_range
+    
+    return None
