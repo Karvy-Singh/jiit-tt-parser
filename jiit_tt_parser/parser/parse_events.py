@@ -138,32 +138,15 @@ class Event:
         while ev_str[0].upper() not in string.ascii_uppercase + string.digits:
             ev_str = ev_str[1:]
 
-        # print(repr(ev_str))
+        subs = extract_substrings(ev_str)
+        ev.classroom = subs[0]
+        subs = subs[1:]
         if "EDD/CADD0" in ev_str:
-            pass
-            ev.classroom = ev_str[: ev_str.find("/")]
-            ev.classroom += "/"
-            ev_str = ev_str[1 + ev_str.find("/") :]
-            ev.classroom += ev_str[: ev_str.find("/")]
-            ev_str = ev_str[ev_str.find("/") :]
-        else:
-            lecture_marker = ev_str.find("/")
-            if lecture_marker == -1:
-                ev.classroom, ev_str = (
-                    ev_str.strip(),
-                    "",
-                )
-            else:
-                ev.classroom, ev_str = (
-                    ev_str[:lecture_marker].strip(),
-                    ev_str[lecture_marker:],
-                )
+            ev.classroom += "/" + subs[0]
+            subs = subs[1:]
+        
 
-        lecturer = ev_str[1:]
-        lec_splitter = ","
-        if "/" in lecturer:
-            lec_splitter = "/"
-        ev.lecturer = lecturer.split(lec_splitter)
+        ev.lecturer = subs
         ev.lecturer = [faculties.get(i.strip()) or i.strip() for i in ev.lecturer]
         for i in range(len(ev.lecturer)):
             ev.lecturer[i] = (
@@ -179,6 +162,7 @@ class Event:
 
         ev.period = period
         ev.day = day.capitalize()
+        
         return ev
 
     def __str__(self) -> str:
@@ -200,6 +184,37 @@ Venue: {self.classroom}
 Lecturer: {self.lecturer}
 """
 
+
+def extract_substrings(input_string, delimiters=',/\\-'):
+    """
+    Extract substrings from a string separated by specified delimiters.
+    
+    Args:
+        input_string (str): String with substrings separated by delimiters
+        delimiters (str): String containing delimiter characters (default: ',/\\-')
+        
+    Returns:
+        list: List of extracted substrings
+    """
+    if not input_string:
+        return []
+    
+    if not delimiters:
+        return [input_string.strip()] if input_string.strip() else []
+    
+    # Escape special regex characters in delimiters
+    escaped_delimiters = re.escape(delimiters)
+    
+    # Create regex pattern: [escaped_delimiters]+
+    pattern = f'[{escaped_delimiters}]+'
+    
+    # Split by any combination of the specified delimiters
+    substrings = re.split(pattern, input_string)
+    
+    # Filter out empty strings that might result from multiple consecutive delimiters
+    result = [substring.strip() for substring in substrings if substring.strip()]
+    
+    return result
 
 def parse_batches(batch_string):
     """
