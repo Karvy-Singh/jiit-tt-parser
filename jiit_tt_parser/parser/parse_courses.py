@@ -1,7 +1,6 @@
 from openpyxl.worksheet.worksheet import Worksheet
 
-
-def parse_down(sheet: Worksheet, i, j, r, c, ftype):
+def parse_down(sheet: Worksheet, i, j, r, _, ftype):
     course_map = {}
     if ftype == 1:
         while i <= r:

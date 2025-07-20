@@ -3,11 +3,9 @@ from typing import Literal, List
 import string
 import re
 
-from openpyxl.styles import colors
 from openpyxl.cell import Cell, MergedCell
 from openpyxl.worksheet.cell_range import CellRange
 from openpyxl.worksheet.worksheet import Worksheet
-from pandas.compat import sys
 
 from jiit_tt_parser.parser.parse_courses import parse_courses
 from jiit_tt_parser.parser.parse_electives import parse_electives
@@ -26,7 +24,9 @@ days_of_the_week_names = [
 
 
 class Period:
-    def __init__(self, start: datetime.time = None, end: datetime.time = None) -> None:
+    def __init__(
+        self, start: datetime.time | None = None, end: datetime.time | None = None
+    ) -> None:
         self.start_time = start or datetime.time(0, 0)
         self.end_time = end or datetime.time(23, 59)
 
@@ -67,7 +67,7 @@ class Event:
     def __init__(self, event_string: str):
         self.event_string = event_string
         self.batches: List[str]
-        self.event_type: Literal["L", "T", "P", "TALK"]
+        self.event_type: Literal["L", "T", "P", "TALK"] | str # just to please linter
         self.classroom: str
         self.event: str
         self.eventcode: str
@@ -78,15 +78,15 @@ class Event:
     @classmethod
     def from_string(
         cls,
-        ev_str,
+        ev_str: str,
         period: Period,
         day: str,
         courses: dict,
-        electives: dict,
+        _: str, # elective_category
         faculties: dict,
     ):
         ev_str = ev_str.strip().replace("\n", " ").replace("\xa0", " ")
-        # print(repr(ev_str))
+        print(repr(ev_str))
         og = ev_str
 
         if "C1-C3HS" in ev_str:
@@ -97,6 +97,9 @@ class Event:
 
         if ev_str.startswith("PBG") and ev_str[3].isdigit():
             ev_str = "PG" + ev_str[3:]
+
+        if "A5-A6-A10" in ev_str:
+            ev_str = ev_str.replace("A5-A6-A10", "A5,A6,A10")
 
         if ev_str == "":
             return None
@@ -133,24 +136,55 @@ class Event:
         #         if b[0].isdigit():
         #             ev.batches[i] = f"{ev.batches[0][0]}{ev.batches[i]}"
         ev.eventcode, ev_str = ev_str[1 : ev_str.find(")")], ev_str[ev_str.find(")") :]
-        ev.event = lookup_sub(ev.eventcode.strip(), courses)
+        ev.event = lookup_sub(ev.eventcode.strip(), courses) or ""
+        ev.event = " ".join(
+            ev.event.replace("\xa0", " ").replace("\n", " ").strip().split()
+        )
 
         while ev_str[0].upper() not in string.ascii_uppercase + string.digits:
             ev_str = ev_str[1:]
 
-        subs = extract_substrings(ev_str)
-        ev.classroom = subs[0]
-        subs = subs[1:]
-        if "EDD/CADD0" in ev_str:
-            ev.classroom += "/" + subs[0]
-            subs = subs[1:]
-        
+        classroom: str
+        teacher: str
+        ok: bool
+        classroom, teacher, ok = parse_classroom_teacher_format(ev_str)
+        if ok:
+            subs = [classroom, teacher]
+        else:
+            subs = extract_substrings(ev_str)
+
+        if any(
+            substr in ev_str
+            for substr in ["EDD/CADD0", "ACL,JBSPL", "SPL, 5G LAB/", "SPL,5G LAB/"]
+        ):  # case of two classrooms
+            ev.classroom = "/".join(subs[:2])
+            subs = subs[2:]
+        elif any(
+            substr in ev_str for substr in ["BS,SHG/CL15/CL16"]
+        ):  # case of reversed two classrooms
+            ev.classroom = "/".join(subs[-2:])
+            subs = subs[:-2]
+        elif og == "TA18(25B31EC311)-TA13/MO":
+            ev.classroom = "N/A"
+        elif "PL2/RAV.NFP1" in ev_str:
+            ev.classroom = subs[0]
+            subs = subs[1].split(".")
+        elif "SR05 NFMATHS3" in ev_str:
+            a = subs[0].split()
+            ev.classroom = a[0]
+            subs = [a[1]]
+        else:
+            ev.classroom, subs = parse_class_and_faculty(subs)
 
         ev.lecturer = subs
-        ev.lecturer = [faculties.get(i.strip()) or i.strip() for i in ev.lecturer]
         for i in range(len(ev.lecturer)):
-            ev.lecturer[i] = (
-                ev.lecturer[i].replace("\xa0", " ").replace("\n", " ").strip()
+            lecturer = ev.lecturer[i].strip("- ")
+            v = faculties.get(lecturer)
+            if v is not None:
+                lecturer = v.title()
+
+            ev.lecturer[i] = " ".join(
+                lecturer.replace("\xa0", " ").replace("\n", " ").strip("- ").split()
             )
             nf, ok = get_new_faculty(ev.lecturer[i])
             if ok:
@@ -162,7 +196,9 @@ class Event:
 
         ev.period = period
         ev.day = day.capitalize()
-        
+
+        print(ev)
+
         return ev
 
     def __str__(self) -> str:
@@ -185,36 +221,37 @@ Lecturer: {self.lecturer}
 """
 
 
-def extract_substrings(input_string, delimiters=',/\\-'):
+def extract_substrings(input_string, delimiters=",/\\"):
     """
     Extract substrings from a string separated by specified delimiters.
-    
+
     Args:
         input_string (str): String with substrings separated by delimiters
         delimiters (str): String containing delimiter characters (default: ',/\\-')
-        
+
     Returns:
         list: List of extracted substrings
     """
     if not input_string:
         return []
-    
+
     if not delimiters:
         return [input_string.strip()] if input_string.strip() else []
-    
+
     # Escape special regex characters in delimiters
     escaped_delimiters = re.escape(delimiters)
-    
+
     # Create regex pattern: [escaped_delimiters]+
-    pattern = f'[{escaped_delimiters}]+'
-    
+    pattern = f"[{escaped_delimiters}]+"
+
     # Split by any combination of the specified delimiters
     substrings = re.split(pattern, input_string)
-    
+
     # Filter out empty strings that might result from multiple consecutive delimiters
     result = [substring.strip() for substring in substrings if substring.strip()]
-    
+
     return result
+
 
 def parse_batches(batch_string):
     """
@@ -345,7 +382,7 @@ def get_time_row(sheet: Worksheet, row, col):
     return 2, col
 
 
-def get_day_row(sheet: Worksheet, row, col, day: str):
+def get_day_row(sheet: Worksheet, row, _, day: str):
     day = day.lower()
     for i in range(1, row + 1):
         v = str(sheet.cell(i, 1).value).lower()
@@ -355,10 +392,10 @@ def get_day_row(sheet: Worksheet, row, col, day: str):
     return -1
 
 
-def get_periods(sheet: Worksheet, row, col, time_row):
+def get_periods(sheet: Worksheet, _, col, time_row):
     a = []
     for i in range(2, col + 1):
-        p = Period.from_string(s := str(sheet.cell(time_row, i).value))
+        p = Period.from_string(str(sheet.cell(time_row, i).value))
         a.append(p)
 
     return a
@@ -389,7 +426,7 @@ def is_end_of_day(sheet: Worksheet, curr, day, cols):
     return False
 
 
-def search_merged_cells(merged_cells: list[CellRange], cell: Cell) -> int:
+def search_merged_cells(merged_cells: list[CellRange], cell: Cell) -> int | None:
     for c in merged_cells:
         if c.min_row != c.max_row:
             continue
@@ -404,58 +441,92 @@ def search_merged_cells(merged_cells: list[CellRange], cell: Cell) -> int:
 
 def parse_day(
     sheet: Worksheet,
-    row,
-    col,
+    _: int, # row
+    col: int,
     start,
     periods: List[Period],
     day: str,
     merged_cells: list[CellRange],
     courses: dict,
-    electives: dict,
     faculties: dict,
 ):
+    spam_entries = [
+        "LUNCH",
+        "ALL BATCH FREE FOR MEETING",
+        "FREE TS11",
+        "/NFMATH3",
+        "BLOCKED",
+        "LECTURE AND TUTORIAL CLASSES ARE BLOCKED FOR TALKS.",
+    ]
+
+    elective_categories = [
+        "SE",
+        "HSS 1",
+        "HSS1",
+        "HSS-1",
+        "HSS 2",
+        "HSS2",
+        "HSS-2",
+        "OE 2",
+        "OE2",
+        "OE-2",
+        "DE 1",
+        "DE1",
+        "DE-1",
+        "DE 2",
+        "DE2",
+        "DE-2",
+        "DE 3",
+        "DE3",
+        "DE-3",
+        "DE 4",
+        "DE4",
+        "DE-4",
+        "DE 5",
+        "DE5",
+        "DE-5",
+        "DE 6",
+        "DE6",
+        "DE-6",
+    ]
     events = []
     if str(sheet.cell(start, 2).value).startswith("9"):
         start += 1
 
     for j in range(2, col + 1):
         r = start
+        # elective_cat = ""
         while not is_end_of_day(sheet, r, day, col):
             c = sheet.cell(r, j)
-            if (
-                ((v := c.value) is not None)
-                and (s := str(v).replace("\xa0", " ").replace("\n", " ").strip())
-                and (
-                    s.upper()
-                    not in [
-                        "LUNCH",
-                        "ALL BATCH FREE FOR MEETING",
-                        "FREE TS11",
-                        "/NFMATH3",
-                        "BLOCKED",
-                    ]
-                )
-                and any(ch.isalpha() for ch in s)
-            ):
-                ep = periods[j - 2]
-                if m := search_merged_cells(merged_cells, c):
-                    ep += periods[m - 2]
-
-                # print(periods)
-                if (
-                    ev := Event.from_string(
-                        str(v), ep, day, courses, electives, faculties
-                    )
-                ) is not None:
-                    events.append(ev)
             r += 1
+            if (v := c.value) is None:
+                continue
+            ev_str = str(v).replace("\xa0", " ").replace("\n", " ").strip().upper()
+
+            if ev_str in elective_categories:
+                break
+
+            if ev_str in spam_entries:
+                continue
+
+            if not any(ch.isalpha() for ch in ev_str):
+                continue
+
+            ep = periods[j - 2]
+            if m := search_merged_cells(merged_cells, c):
+                ep += periods[m - 2]
+
+            ev = Event.from_string(ev_str, ep, day, courses, "", faculties)
+            if ev is None:
+                continue
+            events.append(ev)
 
     return events
 
 
 def parse_events(
     sheet: Worksheet,
-    sheet_electives: Worksheet,
+    electives_file: str,
     row: int,
     col: int,
     faculty_map_path: str = FACULTY_MAP,
@@ -464,7 +535,7 @@ def parse_events(
     periods = get_periods(sheet, row, col, time_row)
     merged_cells = sheet.merged_cells.sorted()
     courses = parse_courses(sheet, row, col)
-    electives = parse_electives(sheet_electives)
+    _ = parse_electives(electives_file) # electives
     faculties = load_faculty_map(faculty_map_path)
 
     events = []
@@ -484,7 +555,6 @@ def parse_events(
                 day,
                 merged_cells,
                 courses,
-                electives,
                 faculties,
             )
         )
@@ -507,9 +577,9 @@ def contains_number(s):
     return any(char.isdigit() for char in s)
 
 
-def get_teaching_assistant(input_string):
+def get_teaching_assistant(input_string: str) -> tuple[str, bool]:
     """
-    Check if string matches format 'TA{number}' and extract components.
+    Check if string matches format 'TA{number}' or 'TA-{number}' and extract components.
 
     Args:
         input_string (str): String to check
@@ -522,8 +592,8 @@ def get_teaching_assistant(input_string):
     if not input_string:
         return "Invalid input", False
 
-    # Pattern to match TA followed by digits
-    pattern = r"^TA(\d+)$"
+    # Pattern to match TA followed by optional hyphen and then digits
+    pattern = r"^TA-?(\d+)$"
     match = re.match(pattern, input_string)
 
     if match:
@@ -533,25 +603,194 @@ def get_teaching_assistant(input_string):
         return "Invalid format", False
 
 
-def get_new_faculty(input_string):
+def get_new_faculty(input_string) -> tuple[str, bool]:
+    """Check if string matches format 'NF{chars}{number}' and extract components."""
     if not input_string:
         return "Invalid input", False
 
-    # Pattern to match NF followed by any characters (including none) and ending with digits
     pattern = r"^NF(.*?)(\d+)$"
     match = re.match(pattern, input_string)
+
+    char_map = {"P": "Physics", "M": "Maths"}
 
     if match:
         chars = match.group(1)
         number = match.group(2)
 
-        # If chars is empty, don't include extra space
         if chars:
+            if char_map.get(chars) is not None:
+                return f"New Faculty {char_map[chars]} {number}", True
             return f"New Faculty {chars} {number}", True
         else:
             return f"New Faculty {number}", True
     else:
         return "Invalid format", False
+
+
+def is_classroom_code(text):
+    """Check if text matches classroom code pattern {2+ chars}{number}"""
+    return bool(re.match(r"^[A-Z]{2,}\d+$", text))
+
+
+def is_standalone_number(text):
+    """Check if text is just a number"""
+    return text.isdigit()
+
+
+def parse_class_and_faculty(string_list: List[str]) -> tuple[str, List[str]]:
+    """
+    Parse a list of strings to determine class code and faculty list.
+    Handles classroom concatenation like CL10,11 -> CL10/CL11
+
+    Args:
+        string_list (list): List of strings containing class code and faculty
+
+    Returns:
+        tuple: (class_code, faculty_list)
+               - class_code: The identified class code (may be concatenated classrooms)
+               - faculty_list: List of faculty members
+    """
+    if not string_list or len(string_list) == 0:
+        return "", []
+
+    if len(string_list) == 1:
+        # Only one element, assume it's class code
+        return string_list[0], []
+
+    # Check for classroom concatenation pattern at the end
+    # Look for: [...faculty, classroom_code, number1, number2, ...]
+    classroom_concat_result = check_classroom_concatenation(string_list)
+    if classroom_concat_result:
+        return classroom_concat_result
+
+    first_element = string_list[0]
+    last_element = string_list[-1]
+
+    # Case 1: Check if first element is New Faculty or Teaching Assistant
+    _, is_new_faculty = get_new_faculty(first_element)
+    _, is_teaching_assistant = get_teaching_assistant(first_element)
+
+    if is_new_faculty or is_teaching_assistant:
+        # First element is faculty, so last element is class code
+        return last_element, string_list[:-1]
+
+    # Case 2: Check if last element matches {2 chars}{number} format (but not NF or TA)
+    last_element_pattern = r"^([A-Z]{2})(\d+)$"
+    match = re.match(last_element_pattern, last_element)
+
+    if match:
+        prefix = match.group(1)
+        # Check if prefix is NOT "NF" or "TA"
+        if prefix not in ["NF", "TA"]:
+            # Last element is class code, rest are faculty
+            return last_element, string_list[:-1]
+
+    # Default case: First element is class code, rest are faculty
+    return first_element, string_list[1:]
+
+
+def check_classroom_concatenation(
+    string_list: List[str],
+) -> tuple[str, List[str]] | None:
+    """
+    Check for classroom concatenation pattern and handle it.
+    Pattern: [...faculty, classroom_code, number1, number2, ...]
+    Returns: (concatenated_classroom, faculty_list) or None if pattern not found
+    """
+    if len(string_list) < 3:
+        return None
+
+    # Look for a classroom code followed by one or more standalone numbers
+    for i in range(
+        1, len(string_list) - 1
+    ):  # Start from index 1, don't check last element alone
+        current = string_list[i]
+
+        # Check if current element is a classroom code
+        if is_classroom_code(current):
+            # Check if all remaining elements are standalone numbers
+            remaining_elements = string_list[i + 1 :]
+            if all(is_standalone_number(elem) for elem in remaining_elements):
+                # Extract the base from classroom code
+                match = re.match(r"^([A-Z]+)(\d+)$", current)
+                if match:
+                    base_letters = match.group(1)
+                    # base_number = match.group(2)
+
+                    # Build concatenated classroom string
+                    classrooms = [current]  # Start with the full classroom code
+                    for num in remaining_elements:
+                        classrooms.append(f"{base_letters}{num}")
+
+                    concatenated_classroom = "/".join(classrooms)
+                    faculty_list = string_list[
+                        :i
+                    ]  # Everything before the classroom code
+
+                    return concatenated_classroom, faculty_list
+
+    return None
+
+
+def parse_classroom_teacher_format(input_string: str) -> tuple[str, str, bool]:
+    """
+    Check if string matches format '{any chars}{any number}{whatever follows starting with letter}'
+    and extract classroom and teacher components.
+
+    Args:
+        input_string (str): String to check and parse
+
+    Returns:
+        tuple: (classroom, teacher, is_valid)
+               - classroom: The chars + number part if valid
+               - teacher: The remaining part if valid
+               - is_valid: True if format matches, False otherwise
+    """
+    if not input_string:
+        return "", "", False
+
+    # Pattern: any letters followed by any digits followed by anything starting with a letter
+    pattern = r"^([A-Za-z]+)(\d+)([A-Za-z].*)$"
+    match = re.match(pattern, input_string)
+
+    if match:
+        chars = match.group(1)
+        number = match.group(2)
+        teacher = match.group(3)
+
+        classroom = chars + number
+        return classroom, teacher, True
+    else:
+        return "", "", False
+
+
+def check_list_classroom_teacher_format(string_list):
+    """
+    Check if all strings in the list follow the classroom-teacher format.
+
+    Args:
+        string_list (list): List of strings to check
+
+    Returns:
+        tuple: (parsed_list, all_match)
+               - parsed_list: List of (classroom, teacher) tuples
+               - all_match: True if all strings match the format
+    """
+    if not string_list:
+        return [], False
+
+    parsed_list = []
+    all_match = True
+
+    for s in string_list:
+        classroom, teacher, is_valid = parse_classroom_teacher_format(s)
+        if is_valid:
+            parsed_list.append((classroom, teacher))
+        else:
+            all_match = False
+            break
+
+    return parsed_list, all_match
 
 
 def lookup_sub(subject_code, subject_dict):

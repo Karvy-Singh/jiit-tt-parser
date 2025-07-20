@@ -49,9 +49,12 @@ def download(url: str, save_as: str, block_size: int = 1024*10):
     
     return size
 
-def load_worksheet(path: str) -> tuple[Worksheet, int, int]:
+def load_worksheet(path: str) -> tuple[Worksheet, int, int] | None:
     wb = openpyxl.load_workbook(path)
     sheet = wb.active
+    if sheet is None:
+        return None
+
     r, c = max_bounds(sheet)
     return sheet, r, c
 

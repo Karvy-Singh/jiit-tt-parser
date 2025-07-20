@@ -36,7 +36,7 @@ def cache_fac():
     print("found")
     
     print("Generating faculty maps... ", end="")
-    c = get_faculty_map(fac1, fac2, sem1, bca_sem1)
+    c = get_faculty_map(fac1, fac2, sem1, bca_sem1, bca_sem1)
     cache_faculty_map(c)
 
     print("done")
