@@ -416,7 +416,7 @@ def is_end_of_day(sheet: Worksheet, curr, day, cols):
 
     if isinstance(sheet.cell(curr, 1), MergedCell):
         if not are_cells_in_same_merged_group(
-            sheet, sheet.cell(curr, 1), sheet.cell(curr -1, 1)
+            sheet, sheet.cell(curr, 1), sheet.cell(curr + 1, 1)
         ):
             return True
     else:
@@ -496,7 +496,9 @@ def parse_day(
     for j in range(2, col + 1):
         r = start
         # elective_cat = ""
-        while not is_end_of_day(sheet, r, day, col):
+        reached_end =False
+        while not reached_end:
+            reached_end = is_end_of_day(sheet, r, day, col)
             c = sheet.cell(r, j)
             r += 1
             if (v := c.value) is None:
