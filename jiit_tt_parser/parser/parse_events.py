@@ -416,7 +416,7 @@ def is_end_of_day(sheet: Worksheet, curr, day, cols):
 
     if isinstance(sheet.cell(curr, 1), MergedCell):
         if not are_cells_in_same_merged_group(
-            sheet, sheet.cell(curr, 1), sheet.cell(curr + 1, 1)
+            sheet, sheet.cell(curr, 1), sheet.cell(curr -1, 1)
         ):
             return True
     else:
