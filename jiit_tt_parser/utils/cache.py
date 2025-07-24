@@ -22,6 +22,6 @@ def get_cache_file(file: str):
 
 FACULTY_MAP = get_cache_file("faculty.json")
 
-def load_faculty_map(path: str):
+def load_map(path: str):
     with open(path) as f:
         return json.load(f)

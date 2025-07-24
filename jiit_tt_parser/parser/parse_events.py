@@ -1,5 +1,5 @@
 import datetime
-from typing import Literal, List
+from typing import Dict, Literal, List
 import string
 import re
 
@@ -10,7 +10,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from jiit_tt_parser.parser.parse_courses import parse_courses
 from jiit_tt_parser.parser.parse_electives import parse_electives
 from jiit_tt_parser.utils.utils import are_cells_in_same_merged_group, is_empty_row
-from jiit_tt_parser.utils.cache import load_faculty_map, FACULTY_MAP
+from jiit_tt_parser.utils.cache import load_map, FACULTY_MAP
 
 days_of_the_week_names = [
     "monday",
@@ -67,7 +67,7 @@ class Event:
     def __init__(self, event_string: str):
         self.event_string = event_string
         self.batches: List[str]
-        self.event_type: Literal["L", "T", "P", "TALK"] | str # just to please linter
+        self.event_type: Literal["L", "T", "P", "TALK"] | str  # just to please linter
         self.classroom: str
         self.event: str
         self.eventcode: str
@@ -82,7 +82,7 @@ class Event:
         period: Period,
         day: str,
         courses: dict,
-        _: str, # elective_category
+        _: str,  # elective_category
         faculties: dict,
     ):
         ev_str = ev_str.strip().replace("\n", " ").replace("\xa0", " ")
@@ -136,6 +136,9 @@ class Event:
         #         if b[0].isdigit():
         #             ev.batches[i] = f"{ev.batches[0][0]}{ev.batches[i]}"
         ev.eventcode, ev_str = ev_str[1 : ev_str.find(")")], ev_str[ev_str.find(")") :]
+        ev.eventcode = ev.eventcode.strip()
+        if ev.eventcode == "M302":
+            ev.eventcode = "MA302"
         ev.event = lookup_sub(ev.eventcode.strip(), courses) or ""
         ev.event = " ".join(
             ev.event.replace("\xa0", " ").replace("\n", " ").strip().split()
@@ -196,7 +199,8 @@ class Event:
 
         ev.period = period
         ev.day = day.capitalize()
-
+        if ev.event == "":
+            print(repr(og))
         print(ev)
 
         return ev
@@ -441,7 +445,7 @@ def search_merged_cells(merged_cells: list[CellRange], cell: Cell) -> int | None
 
 def parse_day(
     sheet: Worksheet,
-    _: int, # row
+    _: int,  # row
     col: int,
     start,
     periods: List[Period],
@@ -496,7 +500,7 @@ def parse_day(
     for j in range(2, col + 1):
         r = start
         # elective_cat = ""
-        reached_end =False
+        reached_end = False
         while not reached_end:
             reached_end = is_end_of_day(sheet, r, day, col)
             c = sheet.cell(r, j)
@@ -532,13 +536,18 @@ def parse_events(
     row: int,
     col: int,
     faculty_map_path: str = FACULTY_MAP,
+    curriculum_map_path: str = "curriculum.json",
 ) -> List[Event]:
     time_row, col = get_time_row(sheet, row, col)
     periods = get_periods(sheet, row, col, time_row)
     merged_cells = sheet.merged_cells.sorted()
     courses = parse_courses(sheet, row, col)
-    _ = parse_electives(electives_file) # electives
-    faculties = load_faculty_map(faculty_map_path)
+    _ = parse_electives(electives_file)  # electives
+    faculties = load_map(faculty_map_path)
+    curriculum = load_map(curriculum_map_path)
+    curriculum_courses: Dict[str, str] = curriculum["courses"]
+    curriculum_courses.update(courses)
+    curriculum_courses["EC112"] = "Basic Electronics for Biotechnology"
 
     events = []
 
@@ -556,7 +565,7 @@ def parse_events(
                 periods,
                 day,
                 merged_cells,
-                courses,
+                curriculum_courses,
                 faculties,
             )
         )
