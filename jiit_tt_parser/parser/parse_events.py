@@ -101,6 +101,20 @@ class Event:
         if "A5-A6-A10" in ev_str:
             ev_str = ev_str.replace("A5-A6-A10", "A5,A6,A10")
 
+        if "NF1 (DSH)" in ev_str:
+            return 
+        if "PB9,PB10" in ev_str:
+            ev_str= ev_str.replace("PB9,PB10","PB9,10")
+
+        if "PG2,PB16" in ev_str:
+            ev_str= ev_str.replace("PG2,PB16", "PG2,B16")
+
+        if "PBG1,BG2" in ev_str:
+            ev_str= ev_str.replace("PBG1,BG2", "PG1,G2")
+
+        if "BG2" in ev_str:
+            ev_str = ev_str.replace("BG2", "G2")
+
         if ev_str == "":
             return None
         ev = cls(ev_str)
@@ -144,7 +158,7 @@ class Event:
             ev.event.replace("\xa0", " ").replace("\n", " ").strip().split()
         )
 
-        while ev_str[0].upper() not in string.ascii_uppercase + string.digits:
+        while (ev_str) and ev_str[0].upper() not in string.ascii_uppercase + string.digits:
             ev_str = ev_str[1:]
 
         classroom: str
