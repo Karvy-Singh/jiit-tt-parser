@@ -722,40 +722,47 @@ def check_classroom_concatenation(
     Pattern: [...faculty, classroom_code, number1, number2, ...]
     Returns: (concatenated_classroom, faculty_list) or None if pattern not found
     """
-    if len(string_list) < 3:
+    if len(string_list) < 1:
         return None
-
-    # Look for a classroom code followed by one or more standalone numbers
-    for i in range(
-        1, len(string_list) - 1
-    ):  # Start from index 1, don't check last element alone
+    
+    # First check: Look for pattern like "CL09,10" anywhere in the list
+    for i, current in enumerate(string_list):
+        m = re.match(r"^([A-Z]+)(\d+(?:,\d+)+)$", current)
+        if m:
+            base = m.group(1)
+            nums = m.group(2).split(",")
+            rooms = [f"{base}{n}" for n in nums]
+            return "/".join(rooms), string_list[:i]
+    
+    # Second check: Look for a classroom code followed by one or more standalone numbers
+    # Check from the beginning of the list, not just middle elements
+    for i in range(len(string_list)):
         current = string_list[i]
-
         # Check if current element is a classroom code
         if is_classroom_code(current):
-            # Check if all remaining elements are standalone numbers
-            remaining_elements = string_list[i + 1 :]
-            if all(is_standalone_number(elem) for elem in remaining_elements):
-                # Extract the base from classroom code
+            # Look ahead to see if next elements are standalone numbers
+            j = i + 1
+            numbers = []
+            while j < len(string_list) and is_standalone_number(string_list[j]):
+                numbers.append(string_list[j])
+                j += 1
+            
+            # If we found numbers after the classroom code
+            if numbers:
+                # Extract the base letters from classroom code
                 match = re.match(r"^([A-Z]+)(\d+)$", current)
                 if match:
                     base_letters = match.group(1)
-                    # base_number = match.group(2)
-
                     # Build concatenated classroom string
                     classrooms = [current]  # Start with the full classroom code
-                    for num in remaining_elements:
+                    for num in numbers:
                         classrooms.append(f"{base_letters}{num}")
-
                     concatenated_classroom = "/".join(classrooms)
-                    faculty_list = string_list[
-                        :i
-                    ]  # Everything before the classroom code
-
+                    # Faculty list is everything before the classroom code and after the numbers
+                    faculty_list = string_list[:i] + string_list[j:]
                     return concatenated_classroom, faculty_list
-
+    
     return None
-
 
 def parse_classroom_teacher_format(input_string: str) -> tuple[str, str, bool]:
     """
