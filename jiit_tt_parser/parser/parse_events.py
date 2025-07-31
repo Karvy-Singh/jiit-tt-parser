@@ -103,6 +103,7 @@ class Event:
 
         if "NF1 (DSH)" in ev_str:
             return 
+
         if "PB9,PB10" in ev_str:
             ev_str= ev_str.replace("PB9,PB10","PB9,10")
 
@@ -114,6 +115,9 @@ class Event:
 
         if "BG2" in ev_str:
             ev_str = ev_str.replace("BG2", "G2")
+        
+        if "17A18" in ev_str:
+            ev_str= ev_str.replace("17A18","A17,A18")
 
         if ev_str == "":
             return None
