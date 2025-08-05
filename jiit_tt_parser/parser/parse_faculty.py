@@ -1,6 +1,5 @@
 import openpyxl
 from openpyxl.worksheet.worksheet import Worksheet
-from jiit_tt_parser.utils.cache import get_cache_file
 import json
 from jiit_tt_parser.utils.utils import max_bounds
 
@@ -37,12 +36,6 @@ def generate_faculty_map(path: str):
                 faculty_map.update({str(code): str(name)})
 
     return faculty_map
-
-
-def cache_faculty_map(map: dict):
-    FAC_PATH = get_cache_file("faculty.json")
-    with open(FAC_PATH, "w+") as f:
-        json.dump(map, f)
 
 
 def parse_down(sheet: Worksheet, curr: int, curc: int):

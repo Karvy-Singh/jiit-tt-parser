@@ -10,7 +10,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from jiit_tt_parser.parser.parse_courses import parse_courses
 from jiit_tt_parser.parser.parse_electives import parse_electives
 from jiit_tt_parser.utils.utils import are_cells_in_same_merged_group, is_empty_row
-from jiit_tt_parser.utils.cache import load_map, FACULTY_MAP
+from jiit_tt_parser.utils.utils import load_map
 
 days_of_the_week_names = [
     "monday",
@@ -337,6 +337,9 @@ def parse_batches(batch_string):
             # Update current letter
             current_letter = part[0]
 
+        elif part.startswith('BCA'):
+            result.append(part)
+
         else:
             raise ValueError(f"Invalid batch format: '{part}'")
 
@@ -553,7 +556,7 @@ def parse_events(
     electives_file: str,
     row: int,
     col: int,
-    faculty_map_path: str = FACULTY_MAP,
+    faculty_map_path: str ,
     curriculum_map_path: str = "curriculum.json",
 ) -> List[Event]:
     time_row, col = get_time_row(sheet, row, col)
