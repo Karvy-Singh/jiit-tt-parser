@@ -3,6 +3,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell.cell import Cell
 import openpyxl
 import requests
+import json
 
 
 def cvt_xls_to_xlsx(src_file_path, dst_file_path) -> None:
@@ -107,3 +108,7 @@ def get_merged_range_for_cell(worksheet: Worksheet, cell: Cell):
             return merged_range
     
     return None
+
+def load_map(path: str):
+    with open(path) as f:
+        return json.load(f)
