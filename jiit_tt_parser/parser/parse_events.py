@@ -143,7 +143,7 @@ class Elective:
 
         ev.eventcode, ev_str = ev_str[1 : ev_str.find(")")], ev_str[ev_str.find(")") :]
         ev.eventcode = ev.eventcode.strip()
-        ev.event = lookup_sub(ev.eventcode.strip(), courses) or ""
+        ev.event = lookup_sub(ev.eventcode.strip(), courses) or lookup_sub(ev.eventcode.strip(), courses["super_secret_key"]) or ""
         ev.event = " ".join(ev.event.strip().split())
 
         while (ev_str) and ev_str[
@@ -213,8 +213,6 @@ class Elective:
         return ev
 
     def __str__(self) -> str:
-        # print(repr(self.event_type))
-        # print(self.event_string)
         lecture_types = {
             "L": "Lecture",
             "T": "Tutorial",
@@ -366,7 +364,7 @@ class Event:
         ev.eventcode = ev.eventcode.strip()
         if ev.eventcode == "M302":
             ev.eventcode = "MA302"
-        ev.event = lookup_sub(ev.eventcode.strip(), courses) or ""
+        ev.event = lookup_sub(ev.eventcode.strip(), courses) or lookup_sub(ev.eventcode.strip(), courses["super_secret_key"]) or ""
         ev.event = " ".join(
             ev.event.replace("\xa0", " ").replace("\n", " ").strip().split()
         )
@@ -435,8 +433,6 @@ class Event:
         return ev
 
     def __str__(self) -> str:
-        # print(repr(self.event_type))
-        # print(self.event_string)
         lecture_types = {
             "L": "Lecture",
             "T": "Tutorial",
@@ -751,7 +747,6 @@ def parse_day_with_electives(
     courses: dict,
     faculties: dict,
 ) -> List[Event | Elective]:
-    print("elective")
     spam_entries = [
         "LUNCH",
         "LMINOR",
@@ -764,6 +759,7 @@ def parse_day_with_electives(
         i.replace("\xa0", " ").replace("\n", " ").strip().upper().strip("/\\")
         for i in spam_entries
     ]
+    
 
     elective_cats = get_elective_categories_map()
 
@@ -807,8 +803,6 @@ def parse_day_with_electives(
             ep = periods[j - 2]
             if m := search_merged_cells(merged_cells, c):
                 ep += periods[m - 2]
-
-            print(repr(elective_cat), repr(ep.start_time))
 
             if (
                 elective_cat
@@ -943,15 +937,19 @@ def parse_events(
     _ = parse_electives(electives_file)  # electives
     faculties = load_map(faculty_map_path)
     curriculum = load_map(curriculum_map_path)
-    curriculum_courses: Dict[str, str] = curriculum["courses"]
+    curriculum_courses = curriculum["courses"]
     curriculum_courses.update(courses)
     curriculum_courses["EC112"] = "Basic Electronics for Biotechnology"
+
+
+    new_courses = {}
+    for k,v in courses.items():
+        new_courses.update({k[3:]: v, k: v})
+    curriculum_courses["super_secret_key"] = new_courses
 
     events = []
     title = str(sheet.cell(1, 1).value).replace("\xa0", " ").replace("\n", " ").strip()
     is_4th_sem = "B.Tech IV SEMESTER-EVEN SEM 2026" in title
-
-    print(title, is_4th_sem)
 
     parse_func = parse_day_with_electives if is_4th_sem else parse_day
     for day in days_of_the_week_names:
