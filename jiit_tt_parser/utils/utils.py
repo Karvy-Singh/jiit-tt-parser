@@ -1,4 +1,3 @@
-import xls2xlsx 
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell.cell import Cell
 import openpyxl
@@ -6,8 +5,6 @@ import requests
 import json
 
 
-def cvt_xls_to_xlsx(src_file_path, dst_file_path) -> None:
-    xls2xlsx.XLS2XLSX(src_file_path).to_xlsx(dst_file_path)
 
 def max_bounds(sheet: Worksheet) -> tuple[int, int]:
     row, col = sheet.max_row, sheet.max_column

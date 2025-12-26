@@ -10,10 +10,12 @@ def parse_electives(
     subj_col_idx: int = 3
 ) -> Dict[str, str]:
 
+
     df = pd.read_excel(
         file_path,
         sheet_name=sheet_name,
-        header=header_row
+        header=header_row,
+        engine="openpyxl"
     )
     
     code_col = df.columns[code_col_idx]

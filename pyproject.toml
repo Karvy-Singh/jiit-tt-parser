@@ -7,11 +7,10 @@ license = "GPL3"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.9"
-openpyxl = "^3.1.5"
-requests = "^2.32.3"
-xls2xlsx = "^0.2.0"
-pandas = "^2.3.1"
+python = "^3.10"
+openpyxl = "*"
+requests = "*"
+pandas = "*"
 
 
 [build-system]
