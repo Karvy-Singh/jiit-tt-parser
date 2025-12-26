@@ -48,6 +48,22 @@ class Period:
 
         return cls(start_time, end_time)
 
+    @classmethod
+    def from_string_single_ended(cls, fmt: str):
+        start = fmt.replace("\xa0", " ").strip(" -\n")
+
+        start_hour, start_min = int(start), 0
+        end_hour, end_min = start_hour + 1, 0
+
+        if start_hour < 8:
+            start_hour += 12
+        if end_hour < 9:
+            end_hour += 12
+        start_time = datetime.time(start_hour, start_min)
+        end_time = datetime.time(end_hour, end_min)
+
+        return cls(start_time, end_time)
+
     def __add__(self, other):
         start_time = other.start_time
         end_time = other.end_time
@@ -130,7 +146,7 @@ class Event:
 
         if "CL304 SHV" in ev_str:
             ev_str = ev_str.replace("CL304 SHV", "CL304/SHV")
-        
+
         if "CC 421 SHV" in ev_str:
             ev_str = ev_str.replace("CC 421 SHV", "CC421/SHV")
         if "CL13, CL14" in ev_str:
@@ -139,6 +155,8 @@ class Event:
         if "CL13,CL14" in ev_str:
             ev_str = ev_str.replace("CL13,CL14", "CL13,14")
 
+        if "(GE1120" in ev_str:
+            ev_str = ev_str.replace("(GE1120", "(GE112)")
 
         if ev_str == "":
             return None
@@ -452,11 +470,19 @@ def get_day_row(sheet: Worksheet, row, _, day: str):
 
     return -1
 
+def is_single_ended_time_str(v: str):
+    v = v.strip()
+    return v[0].isdigit() and v.endswith("-")
+
 
 def get_periods(sheet: Worksheet, _, col, time_row):
     a = []
     for i in range(2, col + 1):
-        p = Period.from_string(str(sheet.cell(time_row, i).value))
+        v = str(sheet.cell(time_row, i).value)
+        if is_single_ended_time_str(v):
+            p = Period.from_string_single_ended(v)
+        else:
+            p = Period.from_string(v)
         a.append(p)
 
     return a
@@ -502,7 +528,10 @@ def search_merged_cells(merged_cells: list[CellRange], cell: Cell) -> int | None
 
 EVENT_HEAD_RE = re.compile(r"[A-Z]{1,3}\d+[A-Z0-9]*\(")
 
-def fix_128tt_bad_merged_cells(j: int, v: str, day, courses, faculties, periods, events):
+
+def fix_128tt_bad_merged_cells(
+    j: int, v: str, day, courses, faculties, periods, events
+):
     instances = EVENT_HEAD_RE.findall(v)
     if len(instances) > 1:
         ev_strs = split_on_regex_starts(str(v), EVENT_HEAD_RE)
@@ -510,10 +539,9 @@ def fix_128tt_bad_merged_cells(j: int, v: str, day, courses, faculties, periods,
             ep = periods[j + i - 2]
             ev = Event.from_string(ev_str, ep, day, courses, "", faculties)
             events.append(ev)
-            
+
         return True
     return False
-
 
 
 def parse_day(
@@ -534,6 +562,8 @@ def parse_day(
         "/NFMATH3",
         "BLOCKED",
         "LECTURE AND TUTORIAL CLASSES ARE BLOCKED FOR TALKS.",
+        "/UNCHFORA10",
+        "LUNCH FOR A10,B14,C1"
     ]
 
     elective_categories = [
@@ -582,9 +612,11 @@ def parse_day(
                 continue
             v = str(v)
 
-            if fix_128tt_bad_merged_cells(j, v, day, courses, faculties, periods, events):
+            if fix_128tt_bad_merged_cells(
+                j, v, day, courses, faculties, periods, events
+            ):
                 continue
-            
+
             ev_str = str(v).replace("\xa0", " ").replace("\n", " ").strip().upper()
 
             if ev_str in elective_categories:

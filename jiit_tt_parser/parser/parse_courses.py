@@ -25,7 +25,7 @@ def parse_down(sheet: Worksheet, i, j, r, _, ftype):
     elif ftype == 2:
         while i <= r:
             v = str(sheet.cell(i, j).value)
-            s = str(sheet.cell(i, j + 1).value)
+            s = str(sheet.cell(i, j + 1).value).strip(" -")
             if v == "Faculty Abbreviation with Names" or v == "Faculty Abbreviation":
                 break
 
@@ -96,7 +96,7 @@ def parse_courses(sheet: Worksheet, row: int, col: int):
                 nvalue in ["Subject Code", "SUBJECT CODE"]
             ):
                 course_map.update(parse_down(sheet, i + 1, j, row, col, ftype=1))
-            elif value in ["SHORT FORM / SUBJECT CODE"] and nvalue in ["SUBJECT NAME"]:
+            elif value in ["SHORT FORM / SUBJECT CODE", "SHORT FORM /"] and nvalue in ["SUBJECT NAME"]:
                 course_map.update(parse_down(sheet, i + 1, j, row, col, ftype=2))
             elif (
                 pvalue in ["Name"]
@@ -116,7 +116,6 @@ def parse_courses(sheet: Worksheet, row: int, col: int):
 
             elif value == "Short Name" and nvalue == "Course Code":
                 course_map.update(parse_down(sheet, i + 1, j, row, col, ftype=1))
-
     return course_map
 
 
