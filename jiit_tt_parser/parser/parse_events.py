@@ -121,6 +121,24 @@ class Event:
 
         if "17A18" in ev_str:
             ev_str = ev_str.replace("17A18", "A17,A18")
+        if "BCA 3 &BCA 4" in ev_str:
+            ev_str = ev_str.replace("BCA 3 &BCA 4", "BCA3,BCA4")
+        if "(23B65CA224  CL306,)" in ev_str:
+            ev_str = ev_str.replace("(23B65CA224  CL306,)", "(23B65CA224) - CL306/")
+        if "CC417 KM" in ev_str:
+            ev_str = ev_str.replace("CC417 KM", "CC417/KM")
+
+        if "CL304 SHV" in ev_str:
+            ev_str = ev_str.replace("CL304 SHV", "CL304/SHV")
+        
+        if "CC 421 SHV" in ev_str:
+            ev_str = ev_str.replace("CC 421 SHV", "CC421/SHV")
+        if "CL13, CL14" in ev_str:
+            ev_str = ev_str.replace("CL13, CL14", "CL13,14")
+
+        if "CL13,CL14" in ev_str:
+            ev_str = ev_str.replace("CL13,CL14", "CL13,14")
+
 
         if ev_str == "":
             return None
