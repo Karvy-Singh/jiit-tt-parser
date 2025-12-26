@@ -53,7 +53,7 @@ class Period:
         start = fmt.replace("\xa0", " ").strip(" -\n")
 
         start_hour, start_min = int(start), 0
-        end_hour, end_min = start_hour + 1, 0
+        end_hour, end_min = start_hour + 1, 50
 
         if start_hour < 8:
             start_hour += 12
@@ -79,6 +79,161 @@ class Period:
         return f"{self.start_time.hour}:{str(self.start_time.minute).zfill(2)} - {self.end_time.hour}:{str(self.end_time.minute).zfill(2)}"
 
 
+class Elective:
+    def __init__(self, event_string: str):
+        self.event_string = event_string
+        self.event_type: Literal["L", "T", "P"]
+        self.classroom: str
+        self.event: str
+        self.eventcode: str
+        self.period: Period
+        self.day: str
+        self.lecturer: List[str]
+        self.category: str
+        self.batch_cats: List[str]  # A, B, C
+        self.batches: List[str]
+
+    @classmethod
+    def from_string(
+        cls,
+        ev_str,
+        period: Period,
+        day: str,
+        courses: dict,
+        faculties: dict,
+        category: str,
+    ):
+        if "LB5,B6(25B11EC311)-LT3/MO" in ev_str:
+            return Event.from_string(ev_str, period, day, courses, faculties)
+
+        ev_str = ev_str.strip().replace("\n", " ").replace("\xa0", " ")
+        print(repr(ev_str))
+        og = ev_str
+
+        if ev_str == "":
+            return None
+        ev = cls(ev_str)
+
+        ev.event_type, ev_str = ev_str[:1], ev_str[1:]
+        raw_batches = ev_str[: ev_str.find("(")]
+        ev_str = ev_str[ev_str.find("(") :]
+
+        raw_batches = raw_batches.removeprefix("MINOR")
+        raw_batches = raw_batches.removeprefix("-62")
+        raw_batches = raw_batches.removeprefix("-128")
+
+        raw_batches = extract_substrings(raw_batches)
+        ev.batches = []
+        ev.batch_cats = []
+
+        for batch_str in raw_batches:
+            batch_str = batch_str.strip()
+            if "-" in batch_str:
+                ev.batches.extend(parse_range(batch_str))
+                continue
+
+            if batch_str.isalpha():
+                ev.batch_cats = [i for i in batch_str]
+                continue
+
+            if batch_str[:2].isalpha() and batch_str[0] in ["L", "T", "P"]:
+                batch_str = batch_str[1:]
+
+            ev.batches.append(batch_str)
+
+        ev.eventcode, ev_str = ev_str[1 : ev_str.find(")")], ev_str[ev_str.find(")") :]
+        ev.eventcode = ev.eventcode.strip()
+        ev.event = lookup_sub(ev.eventcode.strip(), courses) or ""
+        ev.event = " ".join(ev.event.strip().split())
+
+        while (ev_str) and ev_str[
+            0
+        ].upper() not in string.ascii_uppercase + string.digits:
+            ev_str = ev_str[1:]
+
+        classroom: str
+        teacher: str
+        ok: bool
+        classroom, teacher, ok = parse_classroom_teacher_format(ev_str)
+        if ok:
+            subs = [classroom, teacher]
+        else:
+            subs = extract_substrings(ev_str)
+
+        if any(
+            substr in ev_str
+            for substr in ["EDD/CADD0", "ACL,JBSPL", "SPL, 5G LAB/", "SPL,5G LAB/"]
+        ):  # case of two classrooms
+            ev.classroom = "/".join(subs[:2])
+            subs = subs[2:]
+        elif any(
+            substr in ev_str for substr in ["BS,SHG/CL15/CL16"]
+        ):  # case of reversed two classrooms
+            ev.classroom = "/".join(subs[-2:])
+            subs = subs[:-2]
+        elif og == "TA18(25B31EC311)-TA13/MO":
+            ev.classroom = "N/A"
+        elif "PL2/RAV.NFP1" in ev_str:
+            ev.classroom = subs[0]
+            subs = subs[1].split(".")
+        elif "SR05 NFMATHS3" in ev_str:
+            a = subs[0].split()
+            ev.classroom = a[0]
+            subs = [a[1]]
+        else:
+            ev.classroom, subs = parse_class_and_faculty(subs)
+
+        if "PH211)-SND" in og:
+            ev.classroom = ""
+            subs = ["SND"]
+
+        ev.lecturer = subs
+        for i in range(len(ev.lecturer)):
+            lecturer = ev.lecturer[i].strip("- ")
+            v = faculties.get(lecturer)
+            if v is not None:
+                lecturer = v.title()
+
+            ev.lecturer[i] = " ".join(lecturer.strip("- ").split())
+            nf, ok = get_new_faculty(ev.lecturer[i])
+            if ok:
+                ev.lecturer[i] = nf
+
+            ta, ok = get_teaching_assistant(ev.lecturer[i])
+            if ok:
+                ev.lecturer[i] = ta
+
+        ev.category = category
+        ev.period = period
+        ev.day = day.capitalize()
+        if ev.event == "":
+            print(repr(og))
+        print(ev)
+
+        return ev
+
+    def __str__(self) -> str:
+        # print(repr(self.event_type))
+        # print(self.event_string)
+        lecture_types = {
+            "L": "Lecture",
+            "T": "Tutorial",
+            "P": "Practical",
+            "TALK": "Talk",
+        }
+
+        return f"""Event: {lecture_types[self.event_type]}
+Time: {self.period}
+Day: {self.day}
+Category: {self.category}
+Batches: {self.batches}
+Batch Categories: {self.batch_cats}
+Subject: {self.event or self.eventcode}
+Venue: {self.classroom}
+Lecturer: {self.lecturer}
+"""
+
+
 class Event:
     def __init__(self, event_string: str):
         self.event_string = event_string
@@ -98,9 +253,24 @@ class Event:
         period: Period,
         day: str,
         courses: dict,
-        _: str,  # elective_category
         faculties: dict,
     ):
+        if any(e in ev_str for e in ["(25B16CS213)", "(25B16CS212)"]):
+            return Elective.from_string(
+                ev_str, period, day, courses, faculties, "DE-1 LAB"
+            )
+        if any(
+            e in ev_str
+            for e in [
+                "(17B1NEC735)",
+                "(25B12EC211)",
+                "(15B11EC313)",
+                "(25B32EC211)",
+                "(20B12EC211)",
+            ]
+        ):
+            return Elective.from_string(ev_str, period, day, courses, faculties, "DE-1")
+
         ev_str = ev_str.strip().replace("\n", " ").replace("\xa0", " ")
         print(repr(ev_str))
         og = ev_str
@@ -470,6 +640,7 @@ def get_day_row(sheet: Worksheet, row, _, day: str):
 
     return -1
 
+
 def is_single_ended_time_str(v: str):
     v = v.strip()
     return v[0].isdigit() and v.endswith("-")
@@ -537,11 +708,128 @@ def fix_128tt_bad_merged_cells(
         ev_strs = split_on_regex_starts(str(v), EVENT_HEAD_RE)
         for i, ev_str in enumerate(ev_strs):
             ep = periods[j + i - 2]
-            ev = Event.from_string(ev_str, ep, day, courses, "", faculties)
+            ev = Event.from_string(ev_str, ep, day, courses, faculties)
             events.append(ev)
 
         return True
     return False
+
+
+def get_elective_categories_map():
+    ecats = ["HSS", "DE", "SE", "OE"]
+    elective_cats = {}
+    for cats in ecats:
+        for numbering in range(1, 10):
+            for ev_type in ["L", "T", "P"]:
+                elective_cats.update(
+                    {f"{ev_type} {cats}-{numbering}": f"{cats}-{numbering}"}
+                )
+                elective_cats.update(
+                    {f"{ev_type} {cats} {numbering}": f"{cats}-{numbering}"}
+                )
+                elective_cats.update(
+                    {f"{ev_type} {cats}{numbering}": f"{cats}-{numbering}"}
+                )
+
+            elective_cats.update({f"{cats}-{numbering}": f"{cats}-{numbering}"})
+            elective_cats.update({f"{cats} {numbering}": f"{cats}-{numbering}"})
+            elective_cats.update({f"{cats}{numbering}": f"{cats}-{numbering}"})
+
+        elective_cats.update({cats: cats})
+
+    return elective_cats
+
+
+def parse_day_with_electives(
+    sheet: Worksheet,
+    _: int,  # row
+    col: int,
+    start,
+    periods: List[Period],
+    day: str,
+    merged_cells: list[CellRange],
+    courses: dict,
+    faculties: dict,
+) -> List[Event | Elective]:
+    print("elective")
+    spam_entries = [
+        "LUNCH",
+        "LMINOR",
+        "PMINOR()",
+        "INSTITUNAL ACTIVITY",
+        "MINOR-128",
+        "PMinor-128(24B16PH211)-AP",
+    ]
+    spam_entries = [
+        i.replace("\xa0", " ").replace("\n", " ").strip().upper().strip("/\\")
+        for i in spam_entries
+    ]
+
+    elective_cats = get_elective_categories_map()
+
+    events = []
+    if str(sheet.cell(start, 2).value).startswith("9"):
+        start += 1
+    elective_set = set()
+    for j in range(2, col + 1):
+        r = start
+        elective_cat = (
+            "MINOR" if periods[j - 2].start_time == datetime.time(13, 0) else ""
+        )
+        reached_end = False
+        while not reached_end:
+            reached_end = is_end_of_day(sheet, r, day, col)
+            c = sheet.cell(r, j)
+            r += 1
+            if (v := c.value) is None:
+                continue
+            v = str(v)
+
+            ev_str = (
+                str(v)
+                .replace("\xa0", " ")
+                .replace("\n", " ")
+                .strip()
+                .upper()
+                .strip("/\\")
+            )
+            ecat = elective_cats.get(ev_str)
+            if ecat:
+                elective_cat = ecat
+                continue
+
+            if ev_str in spam_entries:
+                continue
+
+            if not any(ch.isalpha() for ch in ev_str):
+                continue
+
+            ep = periods[j - 2]
+            if m := search_merged_cells(merged_cells, c):
+                ep += periods[m - 2]
+
+            print(repr(elective_cat), repr(ep.start_time))
+
+            if (
+                elective_cat
+                or ev_str[1:].startswith("MINOR")
+                or any(e in ev_str for e in elective_set)
+            ):
+                cat = "MINOR"
+                if elective_cat:
+                    cat = elective_cat
+
+                ev = Elective.from_string(ev_str, ep, day, courses, faculties, cat)
+            else:
+                ev = Event.from_string(ev_str, ep, day, courses, faculties)
+            if ev is None:
+                continue
+
+            if isinstance(ev, Elective):
+                elective_set.add(ev.eventcode)
+            events.append(ev)
+
+    return events
 
 
 def parse_day(
@@ -554,7 +842,7 @@ def parse_day(
     merged_cells: list[CellRange],
     courses: dict,
     faculties: dict,
-):
+) -> List[Event]:
     spam_entries = [
         "LUNCH",
         "ALL BATCH FREE FOR MEETING",
@@ -563,7 +851,7 @@ def parse_day(
         "BLOCKED",
         "LECTURE AND TUTORIAL CLASSES ARE BLOCKED FOR TALKS.",
         "/UNCHFORA10",
-        "LUNCH FOR A10,B14,C1"
+        "LUNCH FOR A10,B14,C1",
     ]
 
     elective_categories = [
@@ -632,7 +920,7 @@ def parse_day(
             if m := search_merged_cells(merged_cells, c):
                 ep += periods[m - 2]
 
-            ev = Event.from_string(ev_str, ep, day, courses, "", faculties)
+            ev = Event.from_string(ev_str, ep, day, courses, faculties)
             if ev is None:
                 continue
             events.append(ev)
@@ -647,7 +935,7 @@ def parse_events(
     col: int,
     faculty_map_path: str,
     curriculum_map_path: str = "curriculum.json",
-) -> List[Event]:
+) -> List[Event | Elective]:
     time_row, col = get_time_row(sheet, row, col)
     periods = get_periods(sheet, row, col, time_row)
     merged_cells = sheet.merged_cells.sorted()
@@ -660,14 +948,18 @@ def parse_events(
     curriculum_courses["EC112"] = "Basic Electronics for Biotechnology"
 
     events = []
+    title = str(sheet.cell(1, 1).value).replace("\xa0", " ").replace("\n", " ").strip()
+    is_4th_sem = "B.Tech IV SEMESTER-EVEN SEM 2026" in title
 
+    print(title, is_4th_sem)
+
+    parse_func = parse_day_with_electives if is_4th_sem else parse_day
     for day in days_of_the_week_names:
         r = get_day_row(sheet, row, col, day)
         if r < 0:
             continue
-
         events.extend(
-            parse_day(
+            parse_func(
                 sheet,
                 row,
                 col,
@@ -1033,11 +1325,11 @@ def lookup_full_format(code, subject_dict):
     if result:
         return result
 
-    # Try short format fallback (extract last part)
-    match = re.match(r"^\d{2}[A-Z]\d{1,2}([A-Z]{2}\d{3,4})$", code)
-    if match:
-        short_code = match.group(1)
-        return lookup_short_format(short_code, subject_dict)
+    # # Try short format fallback (extract last part)
+    # match = re.match(r"^\d{2}[A-Z]\d{1,2}([A-Z]{2}\d{3,4})$", code)
+    # if match:
+    #     short_code = match.group(1)
+    #     return lookup_short_format(short_code, subject_dict)
 
     return None
 
@@ -1048,11 +1340,11 @@ def lookup_medium_format(code, subject_dict):
     if code in subject_dict:
         return subject_dict[code]
 
-    # Try short format fallback (extract last part)
-    match = re.match(r"^[A-Z]\d{1,2}([A-Z]{2}\d{3,4})$", code)
-    if match:
-        short_code = match.group(1)
-        return lookup_short_format(short_code, subject_dict)
+    # # Try short format fallback (extract last part)
+    # match = re.match(r"^[A-Z]\d{1,2}([A-Z]{2}\d{3,4})$", code)
+    # if match:
+    #     short_code = match.group(1)
+    #     return lookup_short_format(short_code, subject_dict)
 
     return None
 
