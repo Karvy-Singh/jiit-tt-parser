@@ -95,6 +95,9 @@ class Event:
         if "LC1-C3(HS211)-/FF1KMB" in ev_str:
             ev_str = "LC1-C3(HS211)-/FF1/KMB"
 
+        if " - /3084ARJ" in ev_str:
+            ev_str = ev_str.replace("3084ARJ", "3084/ARJ")
+
         if ev_str.startswith("PBG") and ev_str[3].isdigit():
             ev_str = "PG" + ev_str[3:]
 
@@ -102,22 +105,22 @@ class Event:
             ev_str = ev_str.replace("A5-A6-A10", "A5,A6,A10")
 
         if "NF1 (DSH)" in ev_str:
-            return 
+            return
 
         if "PB9,PB10" in ev_str:
-            ev_str= ev_str.replace("PB9,PB10","PB9,10")
+            ev_str = ev_str.replace("PB9,PB10", "PB9,10")
 
         if "PG2,PB16" in ev_str:
-            ev_str= ev_str.replace("PG2,PB16", "PG2,B16")
+            ev_str = ev_str.replace("PG2,PB16", "PG2,B16")
 
         if "PBG1,BG2" in ev_str:
-            ev_str= ev_str.replace("PBG1,BG2", "PG1,G2")
+            ev_str = ev_str.replace("PBG1,BG2", "PG1,G2")
 
         if "BG2" in ev_str:
             ev_str = ev_str.replace("BG2", "G2")
-        
+
         if "17A18" in ev_str:
-            ev_str= ev_str.replace("17A18","A17,A18")
+            ev_str = ev_str.replace("17A18", "A17,A18")
 
         if ev_str == "":
             return None
@@ -162,7 +165,9 @@ class Event:
             ev.event.replace("\xa0", " ").replace("\n", " ").strip().split()
         )
 
-        while (ev_str) and ev_str[0].upper() not in string.ascii_uppercase + string.digits:
+        while (ev_str) and ev_str[
+            0
+        ].upper() not in string.ascii_uppercase + string.digits:
             ev_str = ev_str[1:]
 
         classroom: str
@@ -337,7 +342,7 @@ def parse_batches(batch_string):
             # Update current letter
             current_letter = part[0]
 
-        elif part.startswith('BCA'):
+        elif part.startswith("BCA"):
             result.append(part)
 
         else:
@@ -394,6 +399,19 @@ def parse_concatenated(concat_str):
         raise ValueError(f"No valid batch codes found in: '{concat_str}'")
 
     return [f"{letter}{number}" for letter, number in matches]
+
+
+def split_on_regex_starts(s: str, rx: re.Pattern) -> list[str]:
+    starts = [m.start() for m in rx.finditer(s)]
+    if not starts:
+        return [s]
+    if len(starts) == 1:
+        return [s[starts[0] :]]
+    parts = []
+    for i, st in enumerate(starts):
+        end = starts[i + 1] if i + 1 < len(starts) else len(s)
+        parts.append(s[st:end])
+    return parts
 
 
 def get_time_row(sheet: Worksheet, row, col):
@@ -464,6 +482,22 @@ def search_merged_cells(merged_cells: list[CellRange], cell: Cell) -> int | None
     return None
 
 
+EVENT_HEAD_RE = re.compile(r"[A-Z]{1,3}\d+[A-Z0-9]*\(")
+
+def fix_128tt_bad_merged_cells(j: int, v: str, day, courses, faculties, periods, events):
+    instances = EVENT_HEAD_RE.findall(v)
+    if len(instances) > 1:
+        ev_strs = split_on_regex_starts(str(v), EVENT_HEAD_RE)
+        for i, ev_str in enumerate(ev_strs):
+            ep = periods[j + i - 2]
+            ev = Event.from_string(ev_str, ep, day, courses, "", faculties)
+            events.append(ev)
+            
+        return True
+    return False
+
+
+
 def parse_day(
     sheet: Worksheet,
     _: int,  # row
@@ -528,6 +562,11 @@ def parse_day(
             r += 1
             if (v := c.value) is None:
                 continue
+            v = str(v)
+
+            if fix_128tt_bad_merged_cells(j, v, day, courses, faculties, periods, events):
+                continue
+            
             ev_str = str(v).replace("\xa0", " ").replace("\n", " ").strip().upper()
 
             if ev_str in elective_categories:
@@ -556,7 +595,7 @@ def parse_events(
     electives_file: str,
     row: int,
     col: int,
-    faculty_map_path: str ,
+    faculty_map_path: str,
     curriculum_map_path: str = "curriculum.json",
 ) -> List[Event]:
     time_row, col = get_time_row(sheet, row, col)
@@ -731,7 +770,7 @@ def check_classroom_concatenation(
     """
     if len(string_list) < 1:
         return None
-    
+
     # First check: Look for pattern like "CL09,10" anywhere in the list
     for i, current in enumerate(string_list):
         m = re.match(r"^([A-Z]+)(\d+(?:,\d+)+)$", current)
@@ -740,7 +779,7 @@ def check_classroom_concatenation(
             nums = m.group(2).split(",")
             rooms = [f"{base}{n}" for n in nums]
             return "/".join(rooms), string_list[:i]
-    
+
     # Second check: Look for a classroom code followed by one or more standalone numbers
     # Check from the beginning of the list, not just middle elements
     for i in range(len(string_list)):
@@ -753,7 +792,7 @@ def check_classroom_concatenation(
             while j < len(string_list) and is_standalone_number(string_list[j]):
                 numbers.append(string_list[j])
                 j += 1
-            
+
             # If we found numbers after the classroom code
             if numbers:
                 # Extract the base letters from classroom code
@@ -768,8 +807,9 @@ def check_classroom_concatenation(
                     # Faculty list is everything before the classroom code and after the numbers
                     faculty_list = string_list[:i] + string_list[j:]
                     return concatenated_classroom, faculty_list
-    
+
     return None
+
 
 def parse_classroom_teacher_format(input_string: str) -> tuple[str, str, bool]:
     """
