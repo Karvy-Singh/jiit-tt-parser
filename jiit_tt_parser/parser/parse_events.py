@@ -129,11 +129,28 @@ class Elective:
         raw_batches = extract_substrings(raw_batches)
         ev.batches = []
         ev.batch_cats = []
-
+        raw_batches_128 = ""
         try:
-            if "F" or "E" or "H" in raw_batches[0]:
-                ev.batches = parse_batches(raw_batches[0])
+            raw_batches_128 = raw_batches[0]
         except:
+            pass
+        print(raw_batches)
+
+        if (
+            "F1" in raw_batches_128
+            or "E1" in raw_batches_128
+            or "F8" in raw_batches_128
+        ):
+            ev.batches = parse_batches(raw_batches_128)
+            print("f found")
+
+        elif "ALL" in raw_batches_128:
+            ev.batches = []
+            ev.batch_cats = ["E", "F", "H"]
+            print("all found")
+
+        else:
+            print("else condn")
             for batch_str in raw_batches:
                 batch_str = batch_str.strip()
                 if "-" in batch_str:
@@ -277,9 +294,29 @@ class Event:
                 "(15B11EC313)",
                 "(25B32EC211)",
                 "(20B12EC211)",
+                "25B42EC211",
+                "21B12CS319",
+                "25B42EC212",
             ]
         ):
             return Elective.from_string(ev_str, period, day, courses, faculties, "DE-1")
+        if any(
+            e in ev_str
+            for e in [
+                "15B1NHS431",
+                "16B1NHS431",
+                "15B1NHS433",
+                "16B1NHS332",
+                "23B12HS211",
+                "15B1NHS433",
+                "16B1NHS332",
+                "23B12HS211",
+                "19B12HS412",
+            ]
+        ):
+            return Elective.from_string(
+                ev_str, period, day, courses, faculties, "HSS-1"
+            )
 
         ev_str = ev_str.strip().replace("\n", " ").replace("\xa0", " ")
         print(repr(ev_str))
